@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(HlkEvents VERSION 2.0.2)
+project(HlkEvents VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
