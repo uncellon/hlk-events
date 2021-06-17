@@ -7,7 +7,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 add_library(${PROJECT_NAME} INTERFACE)
 add_library(Hlk::Events ALIAS ${PROJECT_NAME})
 
-add_subdirectory(test)
+if (BUILD_TEST)
+    add_subdirectory(test)
+endif()
 
 file(GLOB HEADERS src/*.h)
 
