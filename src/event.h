@@ -5,6 +5,11 @@
 
 #include <vector>
 #include <mutex>
+#include <memory>
+
+#ifdef HLK_EVENTS_DEBUG
+#include <iostream>
+#endif // HLK_EVENTS_DEBUG
 
 namespace Hlk {
 
@@ -12,105 +17,151 @@ template <class... TParams>
 class Event {
     using TDelegate = Delegate<void, TParams...>;
 public:
+    // Default constructor
+    Event() : m_eventHandlerDeleted(false), m_destroyed(false),  m_called(false) {
+        // Create mutex
+        m_mutex = new std::mutex();
 
-    Event() 
-            : eventHandlerDeleted_(false), destroyed_(false),  called_(false) {
-        handlers_ = new std::vector<TDelegate *>();
-        mutex_ = new std::mutex();
+        // Create empty event handler collection
+        m_handlers = new std::vector<TDelegate *>();
+    }
+
+    // Copy constructor
+    Event(const Event &other) : m_eventHandlerDeleted(false), m_destroyed(false),
+                                m_called(false) { 
+        // Create mutex
+        m_mutex = new std::mutex;
+        
+        // Copy handlers
+        m_handlers = new std::vector<TDelegate *>();
+        for (size_t i = 0; i < other.m_handlers->size(); ++i) {
+            m_handlers->push_back((*other.m_handlers)[i]);
+        }
+    }
+
+    // Move constructor
+    Event(Event &&other) : m_eventHandlerDeleted(other.m_eventHandlerDeleted),
+                           m_destroyed(other.m_destroyed),
+                           m_called(other.m_called)  {
+        // Create mutex
+        m_mutex = new std::mutex();
+
+        // Move handlers
+        m_handlers = other.m_handlers;
+        other.m_handlers = nullptr;
     }
 
     ~Event() {
-        mutex_->lock();
+        m_mutex->lock();
         /* The event is currently being processed. Some event handler caused the 
         deletion of the object containing the event */
-        if (called_) {
-            destroyed_ = 1;                    
-            mutex_->unlock();
+        if (m_called) {
+            m_destroyed = 1;                    
+            m_mutex->unlock();
             return;
         }
-        mutex_->unlock();
+        m_mutex->unlock();
 
         // Delete event handlers
-        for (TDelegate *delegate : *handlers_) {
+        for (TDelegate *delegate : *m_handlers) {
             delete delegate;
         }
-        delete handlers_;
-        handlers_ = nullptr;
+        delete m_handlers;
+        m_handlers = nullptr;
 
         // Delete mutex
-        delete mutex_;
-        mutex_ = nullptr;
+        delete m_mutex;
+        m_mutex = nullptr;
     }
-
 
     // Add function event handler
     void addEventHandler(void (*func)(TParams...)) {
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
         // Create delegate for handle function
         auto delegate = new TDelegate();
         delegate->bind(func);
 
         // Try to find some delegate in std::vector
-        for (unsigned int i = 0; i < handlers_->size(); ++i) {
-            if ((*handlers_)[i] == delegate) {
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if ((*m_handlers)[i] == delegate) {
                 delete delegate;
                 return;
             }
         }
 
         // Append delegate to the std::vector
-        handlers_->push_back(delegate);
+        m_handlers->push_back(delegate);
     }
 
     // Add method event handler
     template<class TObject>
     void addEventHandler(TObject *object, void (TObject::*method)(TParams...)) {
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
         // Create delegate for handle method
         auto delegate = new TDelegate();
         delegate->bind(object, method);
 
         // Try to find some delegate in std::vector
-        for (unsigned int i = 0; i < handlers_->size(); ++i) {
-            if ((*handlers_)[i] == delegate) {
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if ((*m_handlers)[i] == delegate) {
                 delete delegate;
                 return;
             }
         }
 
         // Append delegate to the std::vector
-        handlers_->push_back(delegate);
+        m_handlers->push_back(delegate);
     }
 
     // Add lambda event handler
     template<class TLambda>
     void addEventHandler(TLambda && lambda) {
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
-        // Create delegate for handle method
+        // Create delegate for handle lambda
         auto delegate = new TDelegate(std::move(lambda));
 
         // Try to find some delegate in std::vector
-        for (unsigned int i = 0; i < handlers_->size(); ++i) {
-            if ((*handlers_)[i] == delegate) {
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if ((*m_handlers)[i] == delegate) {
                 delete delegate;
                 return;
             }
         }
 
         // Append delegate to the std::vector
-        handlers_->push_back(delegate);
+        m_handlers->push_back(delegate);
+    }
+
+    // Add lambda event handler with watch
+    template<class TLambda, class TClass>
+    void addEventHandler(TLambda &&lambda, TClass *object) {
+        std::unique_lock lock(*m_mutex);
+
+        // Create delegate for handle lambda
+        auto delegate = new TDelegate(std::move(lambda), dynamic_cast<NotifierObject*>(object));
+        
+        // Try to find some delegate in std::vector
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if ((*m_handlers)[i] == delegate) {
+                delete delegate;
+                return;
+            }
+        }
+
+        // Append delegate to the std::vector
+        m_handlers->push_back(delegate);
     }
 
     // Remove function event handler
     void removeEventHandler(void (*func)(TParams...)) {
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
         // Check event running
-        if (called_) {
-            eventHandlerDeleted_ = 1;
+        if (m_called) {
+            m_eventHandlerDeleted = 1;
             return;
         }
 
@@ -119,13 +170,13 @@ public:
         delegate.bind(func);
 
         // Try to find delegate to delete
-        for (unsigned int i = 0; i < handlers_->size(); ++i) {
-            if ((*handlers_)[i] == delegate) {
-                delete handlers_[i];
-                handlers_->erase(handlers_->begin() + i);
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if ((*m_handlers)[i] == delegate) {
+                delete m_handlers[i];
+                m_handlers->erase(m_handlers->begin() + i);
 
                 // Mark current to delete
-                eventHandlerDeleted_ = true;
+                m_eventHandlerDeleted = true;
 
                 return;
             }
@@ -135,11 +186,11 @@ public:
     // Remove method event handler
     template<class TObject>
     void removeEventHandler(TObject *object, void (TObject::*method)(TParams...)) {
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
         // Check event running
-        if (called_) {
-            eventHandlerDeleted_ = 1;
+        if (m_called) {
+            m_eventHandlerDeleted = 1;
             return;
         }
 
@@ -148,10 +199,10 @@ public:
         delegate.bind(object, method);
 
         // Try to find delegate to delete
-        for (unsigned int i = 0; i < handlers_->size(); ++i) {
-            if (*(*handlers_)[i] == delegate) {
-                delete (*handlers_)[i];
-                handlers_->erase(handlers_->begin() + i);
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if (*(*m_handlers)[i] == delegate) {
+                delete (*m_handlers)[i];
+                m_handlers->erase(m_handlers->begin() + i);
                 return;
             }
         }   
@@ -160,11 +211,11 @@ public:
     // Remove lambda event handler
     template<class TLambda>
     void removeEventHandler(TLambda && lambda) {
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
         // Check event running
-        if (called_) {
-            eventHandlerDeleted_ = 1;
+        if (m_called) {
+            m_eventHandlerDeleted = 1;
             return;
         }
 
@@ -173,10 +224,10 @@ public:
         delegate.bind(lambda);
 
         // Try to find delegate to delete
-        for (unsigned int i = 0; i < handlers_->size(); ++i) {
-            if (*(*handlers_)[i] == delegate) {
-                delete (*handlers_)[i];
-                handlers_->erase(handlers_->begin() + i);
+        for (unsigned int i = 0; i < m_handlers->size(); ++i) {
+            if (*(*m_handlers)[i] == delegate) {
+                delete (*m_handlers)[i];
+                m_handlers->erase(m_handlers->begin() + i);
                 return;
             }
         }   
@@ -184,39 +235,48 @@ public:
 
     void operator()(TParams... params) {
         // Lock to avoid append or delete event handlers
-        std::unique_lock lock(*mutex_);
+        std::unique_lock lock(*m_mutex);
 
         // Already deleted
-        if (destroyed_) {
+        if (m_destroyed) {
             return;
         }
 
-        called_ = 1;
-        destroyed_ = 0;
+        m_called = 1;
+        m_destroyed = 0;
 
         /* If the handler removes the event, pointers to the allocated objects 
         will be invalid. To avoid the error of freeing non-existent resources, 
         needed to copy the pointers to the local scope of the function. */
-        std::vector<TDelegate *> *handlers = handlers_;
-        std::mutex *mutex = mutex_;
+        std::vector<TDelegate *> *handlers = m_handlers;
+        std::mutex *mutex = m_mutex;
 
         for (unsigned int i = 0; i < handlers->size(); ++i) {
-            /* Before calling the event handler, you must unlock the mutex to 
-            avoid a deadlock, since the handler can cause deletion, add an event 
-            handler, or completely delete the current event */
-            lock.unlock();
-            (*(*handlers)[i])(params...);
-            lock.lock();
+            // Check delegate valid
+            if ((*(*handlers)[i]).isValid()) {                
+                /* Before calling the event handler, you must unlock the mutex 
+                to avoid a deadlock, since the handler can cause deletion, add 
+                an event handler, or completely delete the current event */
+                lock.unlock();
+                (*(*handlers)[i])(params...);
+                lock.lock();
+            } else {
+                m_eventHandlerDeleted = true;
 
-            if (eventHandlerDeleted_) {
+                #ifdef HLK_EVENTS_DEBUG
+                std::cout << "Dead delegate found\n";
+                #endif // HLK_EVENTS_DEBUG
+            }
+
+            if (m_eventHandlerDeleted) {
                 delete (*handlers)[i];
                 handlers->erase(handlers->begin() + i);
-                eventHandlerDeleted_ = false;
+                m_eventHandlerDeleted = false;
             }
         }
 
         // Someone trying destroyed this event during execution
-        if (destroyed_) {
+        if (m_destroyed) {
             // Delete event handlers
             for (TDelegate *delegate : *handlers) {
                 delete delegate;
@@ -226,17 +286,35 @@ public:
             lock.unlock();
             delete mutex;
 
-            called_ = 0;
+            m_called = 0;
             return;
         }
-        called_ = 0;
+        m_called = 0;
     }
 
+    Event& operator=(const Event &other) {
+        if (&other == this) {
+            return *this;
+        }
+
+        // Delete all handlers before copying
+        for (size_t i = 0; i < m_handlers->size(); ++i) {
+            delete (*m_handlers)[i];
+        }
+        m_handlers->clear();
+
+        // Copy handlers
+        for (size_t i = 0; i < other.m_handlers->size(); ++i) {
+            m_handlers->push_back( (*other.m_handlers)[i] );
+        }
+
+        return *this;
+    }
 
 protected:
-    std::vector<TDelegate *> *handlers_;
-    std::mutex *mutex_;
-    bool eventHandlerDeleted_, destroyed_, called_;
+    std::vector<TDelegate *> *m_handlers;
+    std::mutex *m_mutex;
+    bool m_eventHandlerDeleted, m_destroyed, m_called;
 };
 
 } // namespace Hlk

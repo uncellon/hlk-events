@@ -4,12 +4,13 @@
 #include "functionwrapper.h"
 #include "methodwrapper.h"
 #include "lambdawrapper.h"
+#include "notifierobject.h"
 
 #include <utility>
 
 #ifdef HLK_EVENTS_DEBUG
 #include <iostream>
-#endif
+#endif // HLK_EVENTS_DEBUG
 
 namespace Hlk {
 
@@ -20,66 +21,77 @@ public:
      * Constructors / Destructors
      **************************************************************************/
 
-    Delegate() 
-            : wrapper_(nullptr) { 
+    Delegate() : m_wrapper(nullptr) { 
         #ifdef HLK_EVENTS_DEBUG
         const void * address = static_cast<const void*>(this);
         std::cout << "-- Empty delegate created (" << address << ") --" << std::endl;
-        #endif
+        #endif // HLK_EVENTS_DEBUG
     }
 
     // Copy constructor
-    Delegate(Delegate &) = delete;
+    Delegate(const Delegate &other) : m_wrapper(other.m_wrapper) { }
 
     // Move constructor
-    Delegate(Delegate && other) :
-            wrapper_(other.wrapper_) {
-        other.wrapper_ = nullptr;
+    Delegate(Delegate && other) : m_wrapper(other.m_wrapper) {
+        other.m_wrapper = nullptr;
+        other.m_weakPointer = nullptr;
+
         #ifdef HLK_EVENTS_DEBUG
         const void * address = static_cast<const void*>(this);
         std::cout << "-- Delegate move constructor called (" << address << ") --" << std::endl;
-        #endif
+        #endif // HLK_EVENTS_DEBUG
     }
 
     // Function constructor
-    Delegate(TReturn (*func)(TParams...)) 
-            : wrapper_(nullptr) { 
-        bind(func); 
+    Delegate(TReturn (*func)(TParams...)) : m_wrapper(nullptr) {
+        bind(func);
+
         #ifdef HLK_EVENTS_DEBUG
         const void * address = static_cast<const void*>(this);
         std::cout << "-- Function delegate created (" << address << ") --" << std::endl;
-        #endif
+        #endif // HLK_EVENTS_DEBUG
     }
 
     // Method constructor
     template<class TClass>
-    Delegate(TClass *object, TReturn (TClass::*method)(TParams...)) 
-            : wrapper_(nullptr) { 
+    Delegate(TClass *object, TReturn (TClass::*method)(TParams...)) : m_wrapper(nullptr) { 
         bind(object, method); 
         #ifdef HLK_EVENTS_DEBUG
         const void * address = static_cast<const void*>(this);
         std::cout << "-- Method delegate created (" << address << ") --" << std::endl;
-        #endif
+        #endif // HLK_EVENTS_DEBUG
     }
 
     // Lambda constructor
     template<class TLambda>
-    Delegate(TLambda && lambda) 
-            : wrapper_(nullptr) { 
+    Delegate(TLambda && lambda) : m_wrapper(nullptr) { 
         bind(std::move(lambda));
+
         #ifdef HLK_EVENTS_DEBUG
         const void * address = static_cast<const void*>(this);
         std::cout << "-- Lambda delegate created (" << address << ") --" << std::endl;
-        #endif
+        #endif // HLK_EVENTS_DEBUG
+    }
+
+    // Lambda constructor with watched object
+    template<class TLambda>
+    Delegate(TLambda && lambda, NotifierObject *object) : m_wrapper(nullptr) { 
+        bind(std::move(lambda), object);
+
+        #ifdef HLK_EVENTS_DEBUG
+        const void * address = static_cast<const void*>(this);
+        std::cout << "-- Lambda delegate created (" << address << ") --" << std::endl;
+        #endif // HLK_EVENTS_DEBUG
     }
 
     ~Delegate() { 
-        delete(wrapper_); 
-        wrapper_ = nullptr; 
+        delete(m_wrapper); 
+        m_wrapper = nullptr;
+
         #ifdef HLK_EVENTS_DEBUG
         const void * address = static_cast<const void*>(this);
         std::cout << "-- Delegate destroyed (" << address << ") --" << std::endl;
-        #endif
+        #endif // HLK_EVENTS_DEBUG
     }
 
     /***************************************************************************
@@ -88,64 +100,104 @@ public:
 
     // Bind function
     void bind(TReturn (*func)(TParams...)) {
-        if (wrapper_) {
-            delete wrapper_;
+        if (m_wrapper) {
+            delete m_wrapper;
         }
         auto wrapper = new FunctionWrapper<TReturn, TParams...>();
         wrapper->bind(func);
-        wrapper_ = wrapper;
+        m_wrapper = wrapper;
     }
 
     // Bind method
     template<class TClass>
     void bind(TClass *object, TReturn (TClass::*method)(TParams...)) {
-        if (wrapper_) {
-            delete wrapper_;
+        if (m_wrapper) {
+            delete m_wrapper;
         }
         auto wrapper = new MethodWrapper<TReturn, TClass, TParams...>();
         wrapper->bind(object, method);
-        wrapper_ = wrapper;
+        m_wrapper = wrapper;
+
+        // Add watch to the object
+        watchObject(dynamic_cast<NotifierObject*>(object));
     }
 
     // Bind lambda
     template<class TLambda>
     void bind(TLambda && lambda) {
-        if (wrapper_) {
-            delete wrapper_;
+        if (m_wrapper) {
+            delete m_wrapper;
         }
         auto wrapper = new LambdaWrapper<TLambda, TReturn, TParams...>();
         wrapper->bind(std::move(lambda));
-        wrapper_ = wrapper;
+        m_wrapper = wrapper;
+    }
+
+    // Bind lambda with watching object
+    template<class TLambda>
+    void bind(TLambda && lambda, NotifierObject *watchedObject) {
+        if (m_wrapper) {
+            delete m_wrapper;
+        }
+        auto wrapper = new LambdaWrapper<TLambda, TReturn, TParams...>();
+        wrapper->bind(std::move(lambda));
+        m_wrapper = wrapper;
+
+        watchObject(watchedObject);
+    }
+
+    /**
+     * @brief add binding to object lifecycle
+     * 
+     * @param object the object to which the delegate is bound
+     * 
+     * Problem: if the delegate refers to a method on an object that has already 
+     * been destroyed, then this can cause unexpected behavior. To avoid this, 
+     * add a weak pointer to the tracked object. Then it becomes possible to 
+     * check whether it is valid by isValid(...) method before executing the 
+     * delegate.
+     */
+    void watchObject(NotifierObject *object) {
+        m_weakPointer = object->m_selfSharedPointer;
     }
 
     // Call
     TReturn operator()(TParams... params) const {
-        return wrapper_->call(params...);
+        return m_wrapper->call(params...);
     }
 
     // Move operator
     Delegate& operator=(Delegate&& other) {
-        if (wrapper_ && *this == other) {
+        if (&other == this) {
             return *this;
         }
 
-        delete wrapper_;
-        wrapper_ = other.wrapper_;
-        other.wrapper_ = nullptr;
+        delete m_wrapper;
+        m_wrapper = other.m_wrapper;
+        other.m_wrapper = nullptr;
+
         return *this;
     }
 
     AbstractWrapper<TReturn, TParams...> &wrapper() const {
-        return *wrapper_;
+        return *m_wrapper;
     }
 
     using TDelegate = Delegate<TReturn, TParams...>;
     bool operator==(const TDelegate &other) const {
-        return *wrapper_ == other.wrapper();
+        return *m_wrapper == other.wrapper();
+    }
+
+    bool isValid() const {
+        if (m_weakPointer.use_count() == 1) {
+            return false;
+        }
+        return true;
     }
 
 protected:
-    AbstractWrapper<TReturn, TParams...> *wrapper_;
+    AbstractWrapper<TReturn, TParams...> *m_wrapper;
+    std::shared_ptr<NotifierObject> m_weakPointer;
 };
 
 } // namespace Hlk

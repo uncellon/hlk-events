@@ -9,24 +9,27 @@ template<class TLambda, class TReturn, class... TParams>
 class LambdaWrapper : public AbstractWrapper<TReturn, TParams...> {
     using TLWrapper = LambdaWrapper<TLambda, TReturn, TParams...>;
 public:
-    LambdaWrapper() 
-            : lambda_(nullptr) { }
+    // Default constructor
+    LambdaWrapper() : m_lambda(nullptr) { }
+
+    // Copy constructor
+    LambdaWrapper(const LambdaWrapper &other) : m_lambda(other.m_lambda) { }
 
     TReturn call(TParams... params) override {
-        return lambda_->operator()(params...);
+        return m_lambda->operator()(params...);
     }
 
     void bind(TLambda && lambda) {
-        lambda_ = &lambda;
+        m_lambda = &lambda;
     }
 
 protected:
     bool isEquals(const AbstractWrapper<TReturn, TParams...> &other) const override {
         const TLWrapper *otherPtr = dynamic_cast<const TLWrapper *>(&other);
-        return otherPtr != nullptr && lambda_ == otherPtr->lambda_;
+        return otherPtr != nullptr && m_lambda == otherPtr->m_lambda;
     }
 
-    TLambda *lambda_;
+    TLambda *m_lambda;
 };
 
 } // namespace Hlk

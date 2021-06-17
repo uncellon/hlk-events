@@ -9,21 +9,27 @@ template<class TReturn, class... TParams>
 class FunctionWrapper : public AbstractWrapper<TReturn, TParams...> {
     using TFWrapper = FunctionWrapper<TReturn, TParams...>;
 public:
+    // Default constructor
+    FunctionWrapper() = default;
+
+    // Copy constructor
+    FunctionWrapper(const FunctionWrapper &other) : m_func(other.m_func) { }
+
     TReturn call(TParams... params) override {
-        return (*func_)(params...);
+        return (*m_func)(params...);
     }
 
     void bind(TReturn (*func)(TParams...)) {
-        func_ = func;
+        m_func = func;
     }
 
 protected:
     bool isEquals(const AbstractWrapper<TReturn, TParams...> &other) const override {
         const TFWrapper *otherPtr = dynamic_cast<const TFWrapper *>(&other);
-        return otherPtr != nullptr && func_ == otherPtr->func_;
+        return otherPtr != nullptr && m_func == otherPtr->m_func;
     }
 
-    TReturn (*func_)(TParams...);
+    TReturn (*m_func)(TParams...);
 };
 
 } // namespace Hlk

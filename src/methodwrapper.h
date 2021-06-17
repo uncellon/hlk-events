@@ -9,6 +9,13 @@ template<class TReturn, class TClass, class... TParams>
 class MethodWrapper : public AbstractWrapper<TReturn, TParams...> {
     using TMWrapper = MethodWrapper<TReturn, TClass, TParams...>;
 public:
+    // Default constructor
+    MethodWrapper() = default;
+
+    // Copy constructor
+    MethodWrapper(const MethodWrapper &other) : object_(other.object_), 
+                                                method_(other.method_) { }
+
     TReturn call(TParams... params) override {
         return (object_->*method_)(params...);
     }
