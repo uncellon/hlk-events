@@ -1,92 +1,59 @@
-// #define HLK_EVENTS_DEBUG
 #include "delegate.h"
-#include "notifierobject.h"
 #include "eventholder.h"
 #include "eventhandler.h"
 
 #include <iostream>
-#include <vector>
 
-class DelegateHolder {
-public:
-    template<typename U>
-    void setDelegate(U&& delegate) {
-        delegate_ = delegate;
-    }
-    Hlk::Delegate<void> delegate_;
-};
-
-class Printer {
-public:
-    Printer() {
-        std::cout << "I am created\n";
-    }
-
-    ~Printer() {
-        std::cout << "I am destroyed\n";
-    }
-
-    void print() {
-        std::cout << "I am printer!\n";
-    }
-};
-
-DelegateHolder holder;
-
-void passDelegate();
+void printFunction();
 
 int main(int argc, char *argv[]) {
-    holder.setDelegate([] () { std::cout << "1\n"; });
-    holder.delegate_();
+    std::cout << "=================\nHlk::Events tests\n=================\n";
+    
+    std::cout << "\nTest delegate with function binding:\n\n";
+    Hlk::Delegate<void> functionDelegate;
+    functionDelegate.bind(&printFunction);
+    functionDelegate();
 
-    auto delegate = [] () { std::cout << "2\n"; };
-    holder.setDelegate(delegate);
-    holder.delegate_();
+    // Copy delegate
+    auto functionDelegateCopy = functionDelegate;
+    std::cout << "Copied delegate calling: ";
+    functionDelegateCopy();
 
-    holder.setDelegate([] () { std::cout << "3\n"; });
-    holder.delegate_();
+    // Move delegate
+    auto functionDelegateMoved = std::move(functionDelegate);
+    std::cout << "Moved delegate calling: ";
+    functionDelegateMoved();
 
-    passDelegate();
-    holder.delegate_();
+    // Original delegate calling
+    std::cout << "Original delegate calling: \n";
+    functionDelegate();
 
-    std::cout << "End\n";
+    std::cout << "\nTest event handler and event holder classes:\n\n";
 
+    std::cout << "Below 2 messages should be printed:\n\n";
 
-    /* Test class with event and class with event handler */
-    std::cout << "Test class with events and class with event handler 1\n";
-    EventHolder holder;
+    EventHolder eventHolder;
+    EventHandler eventHandler;
+    
+    eventHolder.onPrint.addEventHandler(&eventHandler, &EventHandler::printHandler);
+
+    // Fire event
+    eventHolder.print();
+
+    std::cout << "\nBelow 1 message should be printed:\n\n";
+
+    EventHolder eventHolder2;
     {
-        EventHandler handler;
-        holder.onPrint.addEventHandler(&handler, &EventHandler::printHandler);
+        EventHandler eventHandler2;    
+        eventHolder2.onPrint.addEventHandler(&eventHandler2, &EventHandler::printHandler);
     }
-    holder.print();
 
-    std::cout << "Test class with events and class with event handler 2\n";
-    EventHolder holder2;
-    EventHandler handler2;
-    holder2.onPrint.addEventHandler(&handler2, &EventHandler::printHandler);
-    holder2.print();
+    // Fire event
+    eventHolder2.print();
 
-    std::cout << "Test class with events and class with event handler 3\n";
-    EventHolder holder3;
-    EventHandler handler3;
-    holder3.onPrint.addEventHandler([&handler3] () {
-        std::cout << "Print from lambda with captured handler 3\n";
-    });
-    holder3.print();
-
-    std::cout << "Test class with events and class with event handler 4\n";
-    EventHolder holder4;
-    {
-        EventHandler handler4;
-        holder4.onPrint.addEventHandler([&handler4] () {
-            std::cout << "Print from lambda with captured handler 4\n";
-        }, &handler4);
-    }
-    holder4.print();
+    return 0;
 }
 
-void passDelegate() {
-    auto delegate = [] () { std::cout << "4\n"; };
-    holder.setDelegate(delegate);
+void printFunction() {
+    std::cout << "Printing from function\n";
 }
