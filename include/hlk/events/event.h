@@ -137,11 +137,11 @@ public:
 
     // Add lambda event handler with watch
     template<class TLambda, class TClass>
-    void addEventHandler(TLambda &&lambda, TClass *object) {
+    void addEventHandler(TLambda &&lambda, TClass *context) {
         std::unique_lock lock(*m_mutex);
 
         // Create delegate for handle lambda
-        auto delegate = new TDelegate(std::move(lambda), dynamic_cast<NotifierObject*>(object));
+        auto delegate = new TDelegate(std::move(lambda), dynamic_cast<NotifierObject*>(context));
         
         // Try to find some delegate in std::vector
         for (unsigned int i = 0; i < m_handlers->size(); ++i) {

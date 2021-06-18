@@ -1,0 +1,9 @@
+set(EXAMPLE_PROJECT HlkEventsExample)
+
+file(GLOB_RECURSE TEST_SOURCES LIST_DIRECTORIES false *.h *.cpp)
+
+set(SOURCES ${TEST_SOURCES})
+
+add_executable(${EXAMPLE_PROJECT} ${TEST_SOURCES})
+
+target_link_libraries(${EXAMPLE_PROJECT} PUBLIC ${PROJECT_NAME})

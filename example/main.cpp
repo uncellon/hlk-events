@@ -1,8 +1,8 @@
-#include "delegate.h"
 #include "eventholder.h"
 #include "eventhandler.h"
 
 #include <iostream>
+#include <hlk/events/delegate.h>
 
 void printFunction();
 
