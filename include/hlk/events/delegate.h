@@ -150,6 +150,7 @@ public:
      */
     void setContext(NotifierObject *object) {
         m_context = object->m_selfSharedPointer;
+        m_withContext = true;
     }
 
     // Call
@@ -195,7 +196,7 @@ public:
     }
 
     bool isValid() const {
-        if (m_context.expired()) {
+        if (m_withContext && m_context.expired()) {
             return false;
         }
         return true;
@@ -204,6 +205,7 @@ public:
 protected:
     std::shared_ptr<AbstractWrapper<TReturn, TParams...>> m_wrapper;
     std::weak_ptr<NotifierObject> m_context;
+    bool m_withContext = false;
 };
 
 } // namespace Hlk

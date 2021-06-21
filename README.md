@@ -2,6 +2,16 @@
 
 ## Changelog:
 
+
+<details>
+<summary>v1.0.3</summary>
+
+- Fixed isValid() check without context
+
+</details>
+
+
+
 <details>
 <summary>v1.0.2</summary>
 
