@@ -6,6 +6,7 @@
 #include <vector>
 #include <mutex>
 #include <memory>
+#include <thread>
 
 #ifdef HLK_EVENTS_DEBUG
 #include <iostream>
@@ -233,7 +234,7 @@ public:
         }   
     }
 
-    void operator()(TParams... params) {
+    void operator()(TParams... params, bool async = true) {
         // Lock to avoid append or delete event handlers
         std::unique_lock lock(*m_mutex);
 
@@ -258,7 +259,11 @@ public:
                 to avoid a deadlock, since the handler can cause deletion, add 
                 an event handler, or completely delete the current event */
                 lock.unlock();
-                (*(*handlers)[i])(params...);
+                if (async) {
+                    std::thread(*(*handlers)[i], params...).detach();
+                } else {
+                    (*(*handlers)[i])(params...);
+                }
                 lock.lock();
             } else {
                 m_eventHandlerDeleted = true;

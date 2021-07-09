@@ -45,3 +45,6 @@
 ## To Do:
 1. Readme
 2. Tests
+
+## Known issues:
+1. Delegate with lambdas may occur undefined behaviour
