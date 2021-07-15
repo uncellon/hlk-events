@@ -234,7 +234,7 @@ public:
         }   
     }
 
-    void operator()(TParams... params, bool async = true) {
+    void operator()(TParams... params, bool async = false) {
         // Lock to avoid append or delete event handlers
         std::unique_lock lock(*m_mutex);
 
