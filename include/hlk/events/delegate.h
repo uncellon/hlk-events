@@ -32,6 +32,7 @@ public:
     Delegate(const Delegate &other) { 
         m_wrapper = other.m_wrapper;
         m_context = other.m_context;
+        m_withContext = other.m_withContext;
     }
 
     // Move constructor
