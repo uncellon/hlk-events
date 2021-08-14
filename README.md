@@ -1,50 +1,13 @@
 # Homebrew Libraries Kit - Events
 
-## Changelog:
+## License
 
+<img align="right" src="https://www.gnu.org/graphics/lgplv3-with-text-154x68.png">
 
-<details>
-<summary>v1.0.3</summary>
+The library is licensed under [GNU Lesser General Public License 3.0](https://www.gnu.org/licenses/lgpl-3.0.txt):
 
-- Fixed isValid() check without context
+Copyright © 2021 Dmitry Plastinin
 
-</details>
+Hlk Events is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as pubblished by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-
-
-<details>
-<summary>v1.0.2</summary>
-
-- Now the Delegate class stores the wrapper as std::shared_ptr<...>
-- Move/Copy operators and constructors added to all wrappers
-- Move/Copy operators and constructors added to the Delegate class
-
-</details>
-
-
-
-<details>
-<summary>v1.0.1</summary>
-
-- Added copy and move constructors to the Event
-- Added NotifierObject class to watch event handler objects
-
-</details>
-
-
-
-<details>
-<summary>v1.0.0</summary>
-
-- First commit :)
-
-</details>
-
-***
-
-## To Do:
-1. Readme
-2. Tests
-
-## Known issues:
-1. Delegate with lambdas may occur undefined behaviour
+Hlk Events is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser Public License for more details
