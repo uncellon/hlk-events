@@ -58,7 +58,7 @@ public:
     Delegate(TLambda&& lambda) { bind(std::move(lambda)); }
 
     // Copy constructor
-    Delegate(const Delegate &other) = delete;
+    Delegate(const Delegate &other) { m_wrapper = other.m_wrapper->clone(); }
 
     // Move constructor
     Delegate(Delegate&& other) {
