@@ -128,6 +128,10 @@ public:
         return *m_wrapper == *(other.m_wrapper);
     }
 
+    bool operator!=(const Delegate<TReturn(TArgs...)> &other) const {
+        return !(*m_wrapper == *(other.m_wrapper));
+    }
+
 protected:
     AbstractWrapper<TReturn(TArgs...)> *m_wrapper = nullptr;
 };
