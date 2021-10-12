@@ -33,8 +33,8 @@ class AbstractWrapper<TReturn(TArgs...)> {
     using TWrapper = AbstractWrapper<TReturn(TArgs...)>;
 public:
     virtual ~AbstractWrapper() { }
+    virtual TWrapper *clone() = 0;    
     virtual TReturn operator()(TArgs...) = 0;
-    virtual TWrapper *clone() = 0;
 
     bool operator==(const TWrapper &other) const {
         return isEquals(other);

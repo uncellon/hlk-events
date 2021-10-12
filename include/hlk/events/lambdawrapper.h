@@ -25,8 +25,6 @@
 
 #include "abstractwrapper.h"
 
-#include <utility>
-
 namespace Hlk {
 
 template<class TLambda, class TFunction>
@@ -36,54 +34,43 @@ template<class TLambda, class TReturn, class... TArgs>
 class LambdaWrapper<TLambda, TReturn(TArgs...)> : public AbstractWrapper<TReturn(TArgs...)> {
     using TLWrapper = LambdaWrapper<TLambda, TReturn(TArgs...)>;
 public:
-    /***************************************************************************
-     * Constructors
-     **************************************************************************/
-
-    // Default constructor
     LambdaWrapper() = default;
 
-    // Copy constructor
-    LambdaWrapper(const LambdaWrapper &other) { m_lambda = new TLambda(*(other.m_lambda)); }
+    LambdaWrapper(const LambdaWrapper &other) { 
+        m_lambda = new TLambda(*(other.m_lambda)); 
+    }
 
-    // Move constructor
     LambdaWrapper(LambdaWrapper&& other) : m_lambda(other.m_lambda) {
         other.m_lambda = nullptr;
     }
 
-    virtual ~LambdaWrapper() { unbind(); }
+    virtual ~LambdaWrapper() { 
+        unbind(); 
+    }
 
-    /***************************************************************************
-     * Public methods
-     **************************************************************************/
+    virtual TLWrapper* clone() override { 
+        return new TLWrapper(*this); 
+    }
+
+    void bind(TLambda&& lambda) { 
+        m_lambda = new TLambda(lambda); 
+    }
+
+    void unbind() {
+        delete m_lambda;
+        m_lambda = nullptr;
+    }
 
     virtual TReturn operator()(TArgs... args) override {
         return m_lambda->operator()(args...);
     }
 
-    virtual TLWrapper* clone() override { return new TLWrapper(*this); }
-
-    void bind(TLambda&& lambda) {
-        m_lambda = new TLambda(lambda);
-    }
-
-    inline void unbind() {
-        delete m_lambda;
-        m_lambda = nullptr;
-    }
-
-    /***************************************************************************
-     * Overloaded operators
-     **************************************************************************/
-
-    // Copy assignment operator
     LambdaWrapper& operator=(const LambdaWrapper &other) {
         if (this == &other) return *this;
         m_lambda = other.m_lambda;
         return *this;
     }
 
-    // Move assignment operator
     LambdaWrapper& operator=(LambdaWrapper&& other) {
         if (this == &other) return *this;
         m_lambda = other.m_lambda;

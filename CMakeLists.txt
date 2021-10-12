@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(HlkEvents VERSION 2.0.2)
+project(HlkEvents VERSION 2.0.3)
 
 option(BUILD_EXAMPLES "Build examples" ON)
 

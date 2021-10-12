@@ -25,15 +25,8 @@
 
 #include "delegate.h"
 
-#include <vector>
 #include <mutex>
-#include <memory>
-#include <thread>
-#include <functional>
-
-#ifdef HLK_EVENTS_DEBUG
-#include <iostream>
-#endif // HLK_EVENTS_DEBUG
+#include <vector>
 
 namespace Hlk {
 
@@ -41,11 +34,6 @@ template <class... TArgs>
 class Event {
     using TDelegate = Delegate<void(TArgs...)>;
 public:
-    /**************************************************************************
-     * Constructors / Destructors
-     *************************************************************************/
-
-    // Default constructor
     Event() {
         // Create mutex
         m_mutex = new std::mutex();
@@ -54,7 +42,6 @@ public:
         m_handlers = new std::vector<TDelegate *>();
     }
 
-    // Copy constructor
     Event(const Event &other) { 
         // Create mutex
         m_mutex = new std::mutex();
@@ -66,7 +53,6 @@ public:
         }
     }
 
-    // Move constructor
     Event(Event &&other) : m_destroyed(other.m_destroyed),
                            m_called(other.m_called)  {
         // Create mutex
@@ -86,7 +72,6 @@ public:
             m_mutex->unlock();
             return;
         }
-        m_mutex->unlock();
 
         // Delete event handlers
         for (TDelegate *delegate : *m_handlers) {
@@ -95,14 +80,12 @@ public:
         delete m_handlers;
         m_handlers = nullptr;
 
+        m_mutex->unlock();
+
         // Delete mutex
         delete m_mutex;
         m_mutex = nullptr;
     }
-
-    /**************************************************************************
-     * Public methods
-     *************************************************************************/
 
     // Add function event handler
     void addEventHandler(void (*func)(TArgs...)) {
@@ -234,7 +217,9 @@ public:
             for (size_t i = 0; i < handlers->size(); ++i) {
                 if ((*handlers)[i] == nullptr) {
                     handlers->erase(handlers->begin() + i--);
-                    if (!--m_deletedHandlersCounter) break;
+                    if (!--m_deletedHandlersCounter) {
+                        break;
+                    }
                     continue;
                 }
             }
@@ -278,20 +263,21 @@ public:
     }
 
 protected:
-    /**************************************************************************
-     * Protected methods
-     *************************************************************************/
-
     inline int indexOfHandler(TDelegate *delegate) {
         for (size_t i = 0; i < m_handlers->size(); ++i) {
-            if ( *((*m_handlers)[i]) == *delegate ) return i;
+            if ( *((*m_handlers)[i]) != *delegate ) {
+                continue;
+            }
+            return i;
         }
         return -1;
     }
 
     inline void unsafeRemoveEventHandler(TDelegate *delegate) {
         int index = indexOfHandler(delegate);
-        if (index == -1) return;
+        if (index == -1) {
+            return;
+        }
         delete (*m_handlers)[index];
         if (m_called) {
             (*m_handlers)[index] = nullptr;
@@ -300,10 +286,6 @@ protected:
         }
         m_handlers->erase(m_handlers->begin() + index);
     }
-
-    /**************************************************************************
-     * Protected members
-     *************************************************************************/
 
     std::vector<TDelegate *> *m_handlers = nullptr;
     std::mutex *m_mutex = nullptr;

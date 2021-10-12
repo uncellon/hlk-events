@@ -34,53 +34,40 @@ template<class TReturn, class... TArgs>
 class FunctionWrapper<TReturn(TArgs...)> : public AbstractWrapper<TReturn(TArgs...)> {
     using TFWrapper = FunctionWrapper<TReturn(TArgs...)>;
 public:
-    /**************************************************************************
-     * Constructors / Destructors
-     *************************************************************************/
-
-    // Default constructor
     FunctionWrapper() = default;
 
-    // Copy constructor
     FunctionWrapper(const FunctionWrapper &other) : m_func(other.m_func) { }
 
-    // Move constructor
     FunctionWrapper(FunctionWrapper&& other) : m_func(other.m_func) {
         other.m_func = nullptr;
     }
 
-    virtual ~FunctionWrapper() { unbind(); }
-
-    /**************************************************************************
-     * Public methods
-     *************************************************************************/
-
-    virtual TReturn operator()(TArgs... args) override {
-        return (*m_func)(args...);
+    virtual ~FunctionWrapper() { 
+        unbind(); 
     }
 
-    virtual TFWrapper* clone() override { return new TFWrapper(*this); }
+    virtual TFWrapper* clone() override { 
+        return new TFWrapper(*this); 
+    }
 
     void bind(TReturn (*func)(TArgs...)) {
         m_func = func;
     }
 
-    inline void unbind() {
+    void unbind() {
         m_func = nullptr;
     }
 
-    /**************************************************************************
-     * Overloaded operators
-     *************************************************************************/
+    virtual TReturn operator()(TArgs... args) override {
+        return (*m_func)(args...);
+    }
 
-    // Copy assignment operator
     FunctionWrapper& operator=(const FunctionWrapper &other) {
         if (this == &other) return *this;
         m_func = other.m_func;
         return *this;
     }
 
-    // Move assignment operator
     FunctionWrapper& operator=(FunctionWrapper&& other) {
         if (this == &other) return *this;
         m_func = other.m_func;

@@ -23,13 +23,11 @@
 #ifndef HLK_DELEGATE_H
 #define HLK_DELEGATE_H
 
-#include "abstractwrapper.h"
 #include "functionwrapper.h"
 #include "methodwrapper.h"
 #include "lambdawrapper.h"
 
 #include <utility>
-#include <iostream>
 
 namespace Hlk {
 
@@ -39,45 +37,35 @@ class Delegate;
 template<class TReturn, class... TArgs>
 class Delegate<TReturn(TArgs...)> {
 public:
-    /**************************************************************************
-     * Constructors / Destructors
-     *************************************************************************/
-
-    // Default constructor
     Delegate() = default;
 
-    // Function constructor
-    Delegate(TReturn (*func)(TArgs...)) { bind(func); }
+    Delegate(const Delegate &other) { 
+        m_wrapper = other.m_wrapper->clone(); 
+    }
 
-    // Method constructor
-    template<class TClass>
-    Delegate(TClass *object, TReturn (TClass::*method)(TArgs...)) { bind(object, method); }
-
-    // Lambda constructor
-    template<class TLambda>
-    Delegate(TLambda&& lambda) { bind(std::move(lambda)); }
-
-    // Copy constructor
-    Delegate(const Delegate &other) { m_wrapper = other.m_wrapper->clone(); }
-
-    // Move constructor
     Delegate(Delegate&& other) {
         m_wrapper = other.m_wrapper;
         other.m_wrapper = nullptr;
     }
 
-    ~Delegate() { delete m_wrapper; }
-
-    /**************************************************************************
-     * Public methods
-     *************************************************************************/
-
-    TReturn operator()(TArgs... args) {
-        if (!m_wrapper) return TReturn();
-        return m_wrapper->operator()(args...);
+    Delegate(TReturn (*func)(TArgs...)) { 
+        bind(func); 
     }
 
-    // Bind function
+    template<class TClass>
+    Delegate(TClass *object, TReturn (TClass::*method)(TArgs...)) { 
+        bind(object, method); 
+    }
+
+    template<class TLambda>
+    Delegate(TLambda&& lambda) { 
+        bind(std::move(lambda)); 
+    }
+
+    ~Delegate() { 
+        delete m_wrapper; 
+    }
+
     void bind(TReturn (*func)(TArgs...)) {
         if (m_wrapper) {
             delete m_wrapper;
@@ -87,7 +75,6 @@ public:
         m_wrapper = wrapper;
     }
 
-    // Bind method
     template<class TClass>
     void bind(TClass *object, TReturn (TClass::*method)(TArgs...)) {
         if (m_wrapper) {
@@ -98,7 +85,6 @@ public:
         m_wrapper = wrapper;
     }
 
-    // Bind delegate
     template<class TLambda>
     void bind(TLambda&& lambda) {
         if (m_wrapper) {
@@ -109,16 +95,25 @@ public:
         m_wrapper = wrapper;
     }
 
-    // Copy assignment operator
+    TReturn operator()(TArgs... args) {
+        if (!m_wrapper) {
+            return TReturn();
+        }
+        return m_wrapper->operator()(args...);
+    }
+
     Delegate& operator=(const Delegate &other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_wrapper = other.m_wrapper->clone();
         return *this;
     };
 
-    // Move assignment operator
     Delegate& operator=(Delegate&& other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_wrapper = other.m_wrapper;
         other.m_wrapper = nullptr;
         return *this;
@@ -129,7 +124,7 @@ public:
     }
 
     bool operator!=(const Delegate<TReturn(TArgs...)> &other) const {
-        return !(*m_wrapper == *(other.m_wrapper));
+        return *m_wrapper != *(other.m_wrapper);
     }
 
 protected:
