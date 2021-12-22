@@ -34,20 +34,35 @@ template<class TReturn, class TClass, class... TArgs>
 class MethodWrapper<TClass, TReturn(TArgs...)> : public AbstractWrapper<TReturn(TArgs...)> {
     using TMWrapper = MethodWrapper<TClass, TReturn(TArgs...)>;
 public:
+    /**************************************************************************
+     * Constructors / Destructors
+     *************************************************************************/
+
     MethodWrapper() = default;
 
-    MethodWrapper(const MethodWrapper &other) : m_object(other.m_object), 
-                                                m_method(other.m_method) { }
+    // Auto-bind constructor
+    MethodWrapper(TClass *object, TReturn (TClass::*method)(TArgs...)) {
+        bind(object, method);
+    }
 
-    MethodWrapper(MethodWrapper && other) : m_object(other.m_object), 
-                                            m_method(other.m_method) {
+    // Copy constructor
+    MethodWrapper(const MethodWrapper &other) 
+    : m_object(other.m_object),
+      m_method(other.m_method) { }
+
+    // Move constructor
+    MethodWrapper(MethodWrapper && other) 
+    : m_object(other.m_object),
+      m_method(other.m_method) {
         other.m_object = nullptr;
         other.m_method = nullptr;
     }
 
-    virtual ~MethodWrapper() { 
-        unbind(); 
-    }
+    virtual ~MethodWrapper() = default;
+
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
 
     virtual TMWrapper* clone() override { 
         return new TMWrapper(*this); 
@@ -58,24 +73,29 @@ public:
         m_method = method;
     }
 
-    void unbind() {
-        m_object = nullptr;
-        m_method = nullptr;
-    }
+    /**************************************************************************
+     * Overloaded operators
+     *************************************************************************/
 
     virtual TReturn operator()(TArgs... args) override {
         return (m_object->*m_method)(args...);
     }
 
+    // Copy assignment operator
     MethodWrapper& operator=(const MethodWrapper &other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_object = other.m_object;
         m_method = other.m_method;
         return *this;
     }
 
+    // Move assignment operator
     MethodWrapper& operator=(MethodWrapper&& other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_object = other.m_object;
         m_method = other.m_method;
         other.m_object = nullptr;
@@ -84,12 +104,20 @@ public:
     }
 
 protected:
-    bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {
+    /**************************************************************************
+     * Method (Protected)
+     *************************************************************************/
+
+    virtual bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {
         const TMWrapper *otherPtr = dynamic_cast<const TMWrapper *>(&other);
-        return otherPtr != nullptr 
-            && m_object == otherPtr->m_object 
+        return otherPtr != nullptr
+            && m_object == otherPtr->m_object
             && m_method == otherPtr->m_method;
     }
+
+    /**************************************************************************
+     * Members
+     *************************************************************************/
 
     TClass *m_object = nullptr;
     TReturn (TClass::*m_method)(TArgs...) = nullptr;

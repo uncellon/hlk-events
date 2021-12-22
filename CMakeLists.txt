@@ -2,14 +2,16 @@ cmake_minimum_required(VERSION 3.16)
 project(HlkEvents VERSION 2.0.3)
 
 option(BUILD_EXAMPLES "Build examples" ON)
+option(BUILD_TESTS "Build tests" ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pthread")
 
 file(GLOB HEADERS include/hlk/events/*.h)
+file(GLOB_RECURSE SOURCES include/hlk/events/*.cpp)
 
-add_library(${PROJECT_NAME} INTERFACE)
+add_library(${PROJECT_NAME} SHARED ${SOURCES})
 add_library(Hlk::Events ALIAS ${PROJECT_NAME})
 
 set_target_properties(
@@ -68,4 +70,11 @@ install(
 
 if(BUILD_EXAMPLES)
     add_subdirectory(example)
+endif()
+
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+    add_test(NAME RemovedMethodCall COMMAND RemovedMethodCallTest)
+    add_test(NAME RemovedLambdaCall COMMAND RemovedLambdaCallTest)
 endif()

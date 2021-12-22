@@ -1,0 +1,5 @@
+add_executable(RemovedMethodCallTest removedmethodcall.cpp)
+target_link_libraries(RemovedMethodCallTest ${PROJECT_NAME})
+
+add_executable(RemovedLambdaCallTest removedlambdacall.cpp)
+target_link_libraries(RemovedLambdaCallTest ${PROJECT_NAME})

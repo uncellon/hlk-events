@@ -34,17 +34,32 @@ template<class TReturn, class... TArgs>
 class FunctionWrapper<TReturn(TArgs...)> : public AbstractWrapper<TReturn(TArgs...)> {
     using TFWrapper = FunctionWrapper<TReturn(TArgs...)>;
 public:
+    /**************************************************************************
+     * Constructors / Destructors
+     *************************************************************************/
+
     FunctionWrapper() = default;
 
-    FunctionWrapper(const FunctionWrapper &other) : m_func(other.m_func) { }
+    // Auto-bind constructor
+    FunctionWrapper(TReturn (*func)(TArgs...)) {
+        bind(func);
+    }
 
-    FunctionWrapper(FunctionWrapper&& other) : m_func(other.m_func) {
+    // Copy constructor
+    FunctionWrapper(const FunctionWrapper &other) 
+    : m_func(other.m_func) { }
+
+    // Move constructor
+    FunctionWrapper(FunctionWrapper&& other) 
+    : m_func(other.m_func) {
         other.m_func = nullptr;
     }
 
-    virtual ~FunctionWrapper() { 
-        unbind(); 
-    }
+    virtual ~FunctionWrapper() = default;
+
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
 
     virtual TFWrapper* clone() override { 
         return new TFWrapper(*this); 
@@ -54,32 +69,46 @@ public:
         m_func = func;
     }
 
-    void unbind() {
-        m_func = nullptr;
-    }
+    /**************************************************************************
+     * Overloaded operators
+     *************************************************************************/
 
     virtual TReturn operator()(TArgs... args) override {
         return (*m_func)(args...);
     }
 
+    // Copy assignment operator
     FunctionWrapper& operator=(const FunctionWrapper &other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_func = other.m_func;
         return *this;
     }
 
+    // Move assignment operator
     FunctionWrapper& operator=(FunctionWrapper&& other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_func = other.m_func;
         other.m_func = nullptr;
         return *this;
     }
 
 protected:
-    bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {
+    /**************************************************************************
+     * Method (Protected)
+     *************************************************************************/
+
+    virtual bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {
         const TFWrapper *otherPtr = dynamic_cast<const TFWrapper *>(&other);
         return otherPtr != nullptr && m_func == otherPtr->m_func;
     }
+
+    /**************************************************************************
+     * Members
+     *************************************************************************/
 
     TReturn (*m_func)(TArgs...) = nullptr;
 };

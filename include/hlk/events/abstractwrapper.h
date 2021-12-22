@@ -32,19 +32,36 @@ template<class TReturn, class... TArgs>
 class AbstractWrapper<TReturn(TArgs...)> {
     using TWrapper = AbstractWrapper<TReturn(TArgs...)>;
 public:
-    virtual ~AbstractWrapper() { }
+    /**************************************************************************
+     * Constructors / Destructors
+     *************************************************************************/
+
+    virtual ~AbstractWrapper() = default;
+
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
+
     virtual TWrapper *clone() = 0;    
     virtual TReturn operator()(TArgs...) = 0;
 
-    bool operator==(const TWrapper &other) const {
+    /**************************************************************************
+     * Overloaded operators
+     *************************************************************************/
+
+    inline bool operator==(const TWrapper &other) const {
         return isEquals(other);
     }
 
-    bool operator!=(const TWrapper &other) const { 
+    bool operator!=(const TWrapper &other) const {
         return !(*this == other);
     }
 
 protected:
+    /**************************************************************************
+     * Methods (Protected)
+     *************************************************************************/
+
     virtual bool isEquals(const TWrapper &other) const = 0;
 };
 

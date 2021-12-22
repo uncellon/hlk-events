@@ -34,55 +34,84 @@ template<class TLambda, class TReturn, class... TArgs>
 class LambdaWrapper<TLambda, TReturn(TArgs...)> : public AbstractWrapper<TReturn(TArgs...)> {
     using TLWrapper = LambdaWrapper<TLambda, TReturn(TArgs...)>;
 public:
+    /**************************************************************************
+     * Constructors / Destructors
+     *************************************************************************/
+
     LambdaWrapper() = default;
 
+    // Auto-bind constructor
+    // LambdaWrapper(TLambda && lambda) {
+    //     bind(std::move(lambda));
+    // }
+
+    // Copy constructor
     LambdaWrapper(const LambdaWrapper &other) { 
         m_lambda = new TLambda(*(other.m_lambda)); 
     }
 
-    LambdaWrapper(LambdaWrapper&& other) : m_lambda(other.m_lambda) {
+    // Move constructor
+    LambdaWrapper(LambdaWrapper&& other) 
+    : m_lambda(other.m_lambda) {
         other.m_lambda = nullptr;
     }
 
-    virtual ~LambdaWrapper() { 
-        unbind(); 
+    virtual ~LambdaWrapper() {
+        delete m_lambda;
     }
+
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
 
     virtual TLWrapper* clone() override { 
         return new TLWrapper(*this); 
     }
 
-    void bind(TLambda&& lambda) { 
-        m_lambda = new TLambda(lambda); 
+    void bind(TLambda && lambda) { 
+        m_lambda = new TLambda(lambda);
     }
 
-    void unbind() {
-        delete m_lambda;
-        m_lambda = nullptr;
-    }
+    /**************************************************************************
+     * Overloaded operators
+     *************************************************************************/
 
     virtual TReturn operator()(TArgs... args) override {
         return m_lambda->operator()(args...);
     }
 
+    // Copy assignment operator
     LambdaWrapper& operator=(const LambdaWrapper &other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_lambda = other.m_lambda;
         return *this;
     }
 
+    // Move assignment operator
     LambdaWrapper& operator=(LambdaWrapper&& other) {
-        if (this == &other) return *this;
+        if (this == &other) {
+            return *this;
+        }
         m_lambda = other.m_lambda;
         other.m_lambda = nullptr;
         return *this;
     }
 
 protected:
-    bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {
+    /**************************************************************************
+     * Method (Protected)
+     *************************************************************************/
+
+    virtual bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {
         const TLWrapper *otherPtr = dynamic_cast<const TLWrapper *>(&other);
         return otherPtr != nullptr && m_lambda == otherPtr->m_lambda;
     }
+
+    /**************************************************************************
+     * Members
+     *************************************************************************/
 
     TLambda *m_lambda = nullptr;
 };
