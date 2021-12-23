@@ -2,31 +2,35 @@
 #include <hlk/events/notifiableobject.h>
 #include <iostream>
 
+using namespace Hlk;
 using namespace std;
+
+unsigned int counter = 0;
 
 class A {
 public:
-    Hlk::Event<> onClick;
+    void fireEvent() { onTriggered(); }
+    
+    Event<> onTriggered;
 };
 
-class B : public Hlk::NotifiableObject {
+class B : public NotifiableObject {
 public:
-    void clickHandler() {
-        cout << "Clicked!\n";
-    }
-
-    void anotherClickHandler() {
-        cout << "Another clicked!\n";
-    }
+    void triggerHandler() { ++counter; }
 };
 
 int main(int argc, char *argv[]) {
     auto a = new A();
     auto b = new B();
-    a->onClick();
-    a->onClick.addEventHandler(b, &B::clickHandler);
-    a->onClick.addEventHandler(b, &B::anotherClickHandler);
-    a->onClick();
+
+    a->fireEvent();
+    a->onTriggered.addEventHandler(b, &B::triggerHandler);
+    a->fireEvent();
     delete b;
-    a->onClick();
+    a->fireEvent();
+
+    if (counter != 1) {
+        return 1;
+    }
+    return 0;
 }

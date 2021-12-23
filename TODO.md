@@ -1,1 +1,1 @@
-- Refactor "event.h"
+- Change storage system in event dispatcher

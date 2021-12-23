@@ -1,3 +1,12 @@
+add_executable(FunctionDelegateCallTest functiondelegatecall.cpp)
+target_link_libraries(FunctionDelegateCallTest ${PROJECT_NAME})
+
+add_executable(MethodDelegateCallTest methoddelegatecall.cpp)
+target_link_libraries(MethodDelegateCallTest ${PROJECT_NAME})
+
+add_executable(LambdaDelegateCallTest lambdadelegatecall.cpp)
+target_link_libraries(LambdaDelegateCallTest ${PROJECT_NAME})
+
 add_executable(RemovedMethodCallTest removedmethodcall.cpp)
 target_link_libraries(RemovedMethodCallTest ${PROJECT_NAME})
 

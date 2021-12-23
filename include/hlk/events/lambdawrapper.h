@@ -40,11 +40,6 @@ public:
 
     LambdaWrapper() = default;
 
-    // Auto-bind constructor
-    // LambdaWrapper(TLambda && lambda) {
-    //     bind(std::move(lambda));
-    // }
-
     // Copy constructor
     LambdaWrapper(const LambdaWrapper &other) { 
         m_lambda = new TLambda(*(other.m_lambda)); 
