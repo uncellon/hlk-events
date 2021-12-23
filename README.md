@@ -1,5 +1,46 @@
 # Homebrew Libraries Kit - Events
 
+## Design goals
+
+The main goal is to create a simple and straightforward implementation of delegates and events.
+
+## Examples
+
+### Base delegate usage
+```cpp
+Hlk::Delegate<void(const std::string &)> printer;
+printer.bind([] (const std::string &msg) {
+    std::cout << msg << std::endl;
+});
+printer("My message");
+```
+
+### Events
+```cpp
+...
+
+class A {
+public:
+    Hlk::Event<void()> onTriggered;
+
+    void fireEvent() { onTriggered(); }
+}
+
+class B : public Hlk::NotifiableObject {
+public:
+    void triggeredHandler() { std::cout << "Class A triggered!\n"; }
+}
+
+int main(int argc, char *argv[]) {
+    A a;
+    B b;
+    a.onTriggered.addEventHandler(&b, &B::triggeredHandler);
+    a.fireEvent(); // After this call, the message "Class A triggered!" will appear in the program output
+    return 0;
+}
+
+```
+
 ## License
 
 <img align="right" src="https://www.gnu.org/graphics/lgplv3-with-text-154x68.png">
