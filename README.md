@@ -17,7 +17,7 @@ The library provides the following structures:
 
 ## Prerequisites
 
-- C++17 and higher
+- C++17 or higher
 - CMake >= 3.16
 
 ## Examples
@@ -89,6 +89,8 @@ eHolder.onSomeDataChanged.addEventHandler(&eHandler2, &EventHandler::someDataCha
 
 eHolder.fireEvent(); // Will print "Some data changed" on the console twice
 ```
+
+It's important to inherit EventHandler from Hlk::NotifiableObject because any objects with event handlers may be destroyed. If such object will be destroyed and before that it subscribe on the event, than next event firing will access to destroyed delegate handler. That may cause undefined behaviour. That's what the Hlk::NotifiableObject is needed for. Due to the execution of the destructor of this object, all handlers will be unsubscribed from the event before being destroyed. 
 
 ## License
 
