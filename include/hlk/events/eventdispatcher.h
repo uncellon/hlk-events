@@ -20,51 +20,50 @@
  * 
  *****************************************************************************/
 
-#ifndef HLK_ABSTRACT_WRAPPER_H
-#define HLK_ABSTRACT_WRAPPER_H
+#ifndef HLK_EVENT_DISPATCHER_H
+#define HLK_EVENT_DISPATCHER_H
+
+#include <mutex>
+#include <vector>
 
 namespace Hlk {
 
-template<class TFunction>
-class AbstractWrapper;
+class AbstractEvent;
+class NotifiableObject;
+class AbstractDelegate;
 
-template<class TReturn, class... TArgs>
-class AbstractWrapper<TReturn(TArgs...)> {
-    using TWrapper = AbstractWrapper<TReturn(TArgs...)>;
+class EventDispatcher {
 public:
     /**************************************************************************
-     * Constructors / Destructors
+     * Methods 
      *************************************************************************/
 
-    virtual ~AbstractWrapper() = default;
+    static EventDispatcher *getInstance();
 
-    /**************************************************************************
-     * Methods
-     *************************************************************************/
-
-    virtual TWrapper *clone() = 0;    
-    virtual TReturn operator()(TArgs...) = 0;
-
-    /**************************************************************************
-     * Overloaded operators
-     *************************************************************************/
-
-    inline bool operator==(const TWrapper &other) const {
-        return isEquals(other);
-    }
-
-    bool operator!=(const TWrapper &other) const {
-        return !(*this == other);
-    }
+    void registerAttachment(AbstractEvent *event, NotifiableObject *notifiable, AbstractDelegate *delegate);
+    void eventDestroyed(AbstractEvent *event);
+    void notifiableDestroyed(NotifiableObject *notifiable);
 
 protected:
     /**************************************************************************
-     * Methods (Protected)
+     * Members
      *************************************************************************/
 
-    virtual bool isEquals(const TWrapper &other) const = 0;
+    static std::mutex m_mutex;
+    static EventDispatcher *m_instance;
+
+    std::vector<AbstractEvent *> m_events;
+    std::vector<NotifiableObject *> m_notifiables;
+    std::vector<AbstractDelegate *> m_delegates;
+
+private:
+    /**************************************************************************
+     * Constructors / Destructors (Private)
+     *************************************************************************/
+
+    EventDispatcher() = default;    
 };
 
-} // namespace Hlk
+} // Hlk
 
-#endif // HLK_ABSTRACT_WRAPPER_H
+#endif // HLK_EVENT_DISPATCHER_H

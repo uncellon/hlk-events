@@ -20,51 +20,28 @@
  * 
  *****************************************************************************/
 
-#ifndef HLK_ABSTRACT_WRAPPER_H
-#define HLK_ABSTRACT_WRAPPER_H
+#ifndef HLK_ABSTRACT_EVENT_H
+#define HLK_ABSTRACT_EVENT_H
+
+#include "abstractdelegate.h"
 
 namespace Hlk {
 
-template<class TFunction>
-class AbstractWrapper;
-
-template<class TReturn, class... TArgs>
-class AbstractWrapper<TReturn(TArgs...)> {
-    using TWrapper = AbstractWrapper<TReturn(TArgs...)>;
+class AbstractEvent {
 public:
     /**************************************************************************
      * Constructors / Destructors
      *************************************************************************/
 
-    virtual ~AbstractWrapper() = default;
+    virtual ~AbstractEvent() = default;
 
     /**************************************************************************
      * Methods
      *************************************************************************/
 
-    virtual TWrapper *clone() = 0;    
-    virtual TReturn operator()(TArgs...) = 0;
-
-    /**************************************************************************
-     * Overloaded operators
-     *************************************************************************/
-
-    inline bool operator==(const TWrapper &other) const {
-        return isEquals(other);
-    }
-
-    bool operator!=(const TWrapper &other) const {
-        return !(*this == other);
-    }
-
-protected:
-    /**************************************************************************
-     * Methods (Protected)
-     *************************************************************************/
-
-    virtual bool isEquals(const TWrapper &other) const = 0;
+    virtual void removeEventHandler(AbstractDelegate *delegate) = 0;
 };
 
 } // namespace Hlk
 
-#endif // HLK_ABSTRACT_WRAPPER_H
+#endif // HLK_ABSTRACT_EVENT_H

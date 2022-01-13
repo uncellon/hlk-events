@@ -1,5 +1,6 @@
 #include "hlk/events/event.h"
 #include "hlk/events/delegate.h"
+#include <hlk/events/notifiableobject.h>
 
 #include <iostream>
 #include <string>
@@ -8,7 +9,7 @@ void printFunction(const std::string &message) {
     std::cout << "Function called: " << message << std::endl;
 }
 
-class MethodHolder {
+class MethodHolder : public Hlk::NotifiableObject {
 public:
     void printMethod(const std::string &message) {
         std::cout << "Method called: " << message << std::endl;

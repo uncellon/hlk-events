@@ -23,6 +23,7 @@
 #ifndef HLK_DELEGATE_H
 #define HLK_DELEGATE_H
 
+#include "abstractdelegate.h"
 #include "functionwrapper.h"
 #include "methodwrapper.h"
 #include "lambdawrapper.h"
@@ -35,56 +36,68 @@ template<class TFunction>
 class Delegate;
 
 template<class TReturn, class... TArgs>
-class Delegate<TReturn(TArgs...)> {
+class Delegate<TReturn(TArgs...)> : public AbstractDelegate {
 public:
+    /**************************************************************************
+     * Constructors / Destructors
+     *************************************************************************/
+
     Delegate() = default;
 
+    // Auto-bind function constructor
+    Delegate(TReturn (*func)(TArgs...)) { 
+        bind(func);
+    }
+
+    // Auto-bind method constructor
+    template<class TClass>
+    Delegate(TClass *object, TReturn (TClass::*method)(TArgs...)) { 
+        bind(object, method);
+    }
+
+    // Auto-bind lambda constructor
+    template<class TLambda>
+    Delegate(TLambda && lambda) { 
+        bind(std::move(lambda)); 
+    }
+
+    // Copy constructor
     Delegate(const Delegate &other) { 
         m_wrapper = other.m_wrapper->clone(); 
     }
 
-    Delegate(Delegate&& other) {
+    // Move constructor
+    Delegate(Delegate && other) {
         m_wrapper = other.m_wrapper;
         other.m_wrapper = nullptr;
-    }
-
-    Delegate(TReturn (*func)(TArgs...)) { 
-        bind(func); 
-    }
-
-    template<class TClass>
-    Delegate(TClass *object, TReturn (TClass::*method)(TArgs...)) { 
-        bind(object, method); 
-    }
-
-    template<class TLambda>
-    Delegate(TLambda&& lambda) { 
-        bind(std::move(lambda)); 
     }
 
     ~Delegate() { 
         delete m_wrapper; 
     }
 
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
+
+    // Bind function
     void bind(TReturn (*func)(TArgs...)) {
         if (m_wrapper) {
             delete m_wrapper;
         }
-        auto wrapper = new FunctionWrapper<TReturn(TArgs...)>();
-        wrapper->bind(func);
-        m_wrapper = wrapper;
+        m_wrapper = new FunctionWrapper<TReturn(TArgs...)>(func);
     }
 
+    // Bind method
     template<class TClass>
     void bind(TClass *object, TReturn (TClass::*method)(TArgs...)) {
         if (m_wrapper) {
             delete m_wrapper;
         }
-        auto wrapper = new MethodWrapper<TClass, TReturn(TArgs...)>();
-        wrapper->bind(object, method);
-        m_wrapper = wrapper;
+        m_wrapper = new MethodWrapper<TClass, TReturn(TArgs...)>(object, method);
     }
 
+    // Bind lambda
     template<class TLambda>
     void bind(TLambda&& lambda) {
         if (m_wrapper) {
@@ -95,6 +108,10 @@ public:
         m_wrapper = wrapper;
     }
 
+    /**************************************************************************
+     * Overloaded operators
+     *************************************************************************/
+
     TReturn operator()(TArgs... args) {
         if (!m_wrapper) {
             return TReturn();
@@ -102,6 +119,7 @@ public:
         return m_wrapper->operator()(args...);
     }
 
+    // Copy assignment operator
     Delegate& operator=(const Delegate &other) {
         if (this == &other) {
             return *this;
@@ -110,7 +128,8 @@ public:
         return *this;
     };
 
-    Delegate& operator=(Delegate&& other) {
+    // Move assignment operator
+    Delegate& operator=(Delegate && other) {
         if (this == &other) {
             return *this;
         }
@@ -119,15 +138,19 @@ public:
         return *this;
     }
 
-    bool operator==(const Delegate<TReturn(TArgs...)> &other) const {
+    inline bool operator==(const Delegate<TReturn(TArgs...)> &other) const {
         return *m_wrapper == *(other.m_wrapper);
     }
 
-    bool operator!=(const Delegate<TReturn(TArgs...)> &other) const {
+    inline bool operator!=(const Delegate<TReturn(TArgs...)> &other) const {
         return *m_wrapper != *(other.m_wrapper);
     }
 
 protected:
+    /**************************************************************************
+     * Members
+     *************************************************************************/
+
     AbstractWrapper<TReturn(TArgs...)> *m_wrapper = nullptr;
 };
 

@@ -23,7 +23,9 @@
 #ifndef HLK_EVENT_H
 #define HLK_EVENT_H
 
+#include "abstractevent.h"
 #include "delegate.h"
+#include "eventdispatcher.h"
 
 #include <mutex>
 #include <vector>
@@ -31,9 +33,13 @@
 namespace Hlk {
 
 template <class... TArgs>
-class Event {
+class Event : public AbstractEvent {
     using TDelegate = Delegate<void(TArgs...)>;
 public:
+    /**************************************************************************
+     * Constructors / Destructors
+     *************************************************************************/
+
     Event() {
         // Create mutex
         m_mutex = new std::mutex();
@@ -53,8 +59,9 @@ public:
         }
     }
 
-    Event(Event &&other) : m_destroyed(other.m_destroyed),
-                           m_called(other.m_called)  {
+    Event(Event && other) 
+    : m_destroyed(other.m_destroyed),
+      m_called(other.m_called)  {
         // Create mutex
         m_mutex = new std::mutex();
 
@@ -85,15 +92,28 @@ public:
         // Delete mutex
         delete m_mutex;
         m_mutex = nullptr;
+
+        EventDispatcher::getInstance()->eventDestroyed(this);
     }
 
-    // Add function event handler
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
+
+    virtual void removeEventHandler(AbstractDelegate *delegate) override {
+        removeEventHandler(dynamic_cast<TDelegate *>(delegate));
+    }
+
+    /**
+     * @brief Creates function delegate and attaches it to the Event
+     * 
+     * @param func attached function
+     */
     void addEventHandler(void (*func)(TArgs...)) {
         std::unique_lock lock(*m_mutex);
 
         // Create delegate for handle function
-        auto delegate = new TDelegate();
-        delegate->bind(func);
+        auto delegate = new TDelegate(func);
 
         // Try to find some delegate in std::vector
         if (indexOfHandler(delegate) != -1) {
@@ -105,7 +125,18 @@ public:
         m_handlers->push_back(delegate);
     }
 
-    // Add method event handler
+    /**
+     * @brief Creates method delegate and attaches it to the Event
+     * 
+     * The attached class must inherit from NotifiableObject. This is necessary 
+     * to store all registered events (including communication with the object 
+     * and delegate) in the process, which, in turn, allows you to remove 
+     * handlers of destroyed objects from events.
+     * 
+     * @tparam TObject attached Class
+     * @param object attached Object
+     * @param method attached Method
+     */
     template<class TObject>
     void addEventHandler(TObject *object, void (TObject::*method)(TArgs...)) {
         std::unique_lock lock(*m_mutex);
@@ -122,11 +153,25 @@ public:
 
         // Append delegate to the std::vector
         m_handlers->push_back(delegate);
+
+        EventDispatcher::getInstance()->registerAttachment(this, object, m_handlers->back());
     }
 
-    // Add lambda event handler
+    /**
+     * @brief Creates lambda delegate and attaches it to the Event
+     * 
+     * Attaches a lambda to the Event with no context tracking. This means that 
+     * calling a lambda with a lambda-capture can cause undefined behavior. For 
+     * example, if instead of attaching to a method event, a lambda was attached 
+     * with a captured "this", deleting the event handler object would not 
+     * remove the lambda handler from the event, so the lambda could refer to an 
+     * invalid "this" capture or be an invalid lambda reference.
+     * 
+     * @tparam TLambda lambda template
+     * @param lambda attached lambda object
+     */
     template<class TLambda>
-    void addEventHandler(TLambda&& lambda) {
+    void addEventHandler(TLambda && lambda) {
         std::unique_lock lock(*m_mutex);
 
         // Create delegate for handle lambda
@@ -141,7 +186,26 @@ public:
 
         // Append delegate to the std::vector
         m_handlers->push_back(delegate);
-        return;
+    }
+
+    template<class TLambda>
+    void addEventHandler(NotifiableObject *context, TLambda && lambda) {
+        std::unique_lock lock(*m_mutex);
+
+        // Create delegate for handle lambda
+        auto delegate = new TDelegate();
+        delegate->bind(std::move(lambda));
+
+        // Try to find some delegate in std::vector
+        if (indexOfHandler(delegate) != -1) {
+            delete delegate;
+            return;
+        }
+
+        // Append delegate to the std::vector
+        m_handlers->push_back(delegate);
+        
+        EventDispatcher::getInstance()->registerAttachment(this, context, m_handlers->back());
     }
 
     // Remove event handler, safe
@@ -161,8 +225,7 @@ public:
     // Remove function event handler
     void removeEventHandler(void (*func)(TArgs...)) {
         std::unique_lock lock(*m_mutex);
-        TDelegate delegate;
-        delegate.bind(func);
+        TDelegate delegate(func);
         unsafeRemoveEventHandler(&delegate);
     }
 
@@ -170,19 +233,22 @@ public:
     template<class TObject>
     void removeEventHandler(TObject *object, void (TObject::*method)(TArgs...)) {
         std::unique_lock lock(*m_mutex);
-        TDelegate delegate;
-        delegate.bind(object, method);
+        TDelegate delegate(object, method);
         unsafeRemoveEventHandler(&delegate);  
     }
 
     // Remove lambda event handler
     template<class TLambda>
-    void removeEventHandler(TLambda&& lambda) {
+    void removeEventHandler(TLambda && lambda) {
         std::unique_lock lock(*m_mutex);
-        TDelegate delegate;
-        delegate.bind(std::move(lambda));
+        TDelegate delegate(std::move(lambda));
+        // delegate.bind(std::move(lambda));
         unsafeRemoveEventHandler(&delegate);
     }
+
+    /**************************************************************************
+     * Overloaded operators
+     *************************************************************************/
 
     void operator()(TArgs... params, bool async = false) {
         // Lock to avoid append or delete event handlers
@@ -263,6 +329,10 @@ public:
     }
 
 protected:
+    /**************************************************************************
+     * Methods (Protected)
+     *************************************************************************/
+
     inline int indexOfHandler(TDelegate *delegate) {
         for (size_t i = 0; i < m_handlers->size(); ++i) {
             if ( *((*m_handlers)[i]) != *delegate ) {
@@ -286,6 +356,10 @@ protected:
         }
         m_handlers->erase(m_handlers->begin() + index);
     }
+
+    /**************************************************************************
+     * Members
+     *************************************************************************/
 
     std::vector<TDelegate *> *m_handlers = nullptr;
     std::mutex *m_mutex = nullptr;
