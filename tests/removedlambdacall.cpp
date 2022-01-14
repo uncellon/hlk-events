@@ -34,5 +34,7 @@ int main(int argc, char *argv[]) {
     if (counter != 1) {
         return 1;
     }
+
+    delete a;
     return 0;
 }

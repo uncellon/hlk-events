@@ -10,5 +10,8 @@ target_link_libraries(LambdaDelegateCallTest ${PROJECT_NAME})
 add_executable(RemovedMethodCallTest removedmethodcall.cpp)
 target_link_libraries(RemovedMethodCallTest ${PROJECT_NAME})
 
+add_executable(RemovedMethodCallV2Test removedmethodcallv2.cpp)
+target_link_libraries(RemovedMethodCallV2Test ${PROJECT_NAME})
+
 add_executable(RemovedLambdaCallTest removedlambdacall.cpp)
 target_link_libraries(RemovedLambdaCallTest ${PROJECT_NAME})

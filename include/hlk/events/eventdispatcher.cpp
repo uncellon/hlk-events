@@ -38,12 +38,30 @@ EventDispatcher *EventDispatcher::getInstance() {
 }
 
 void EventDispatcher::registerAttachment(AbstractEvent *event, NotifiableObject *notifiable, AbstractDelegate *delegate) {
+    std::unique_lock lock(m_vectorMutex);
+    
     m_events.push_back(event);
     m_notifiables.push_back(notifiable);
     m_delegates.push_back(delegate);
 }
 
+void EventDispatcher::removeAttachment(AbstractEvent *event, AbstractDelegate *delegate) {
+    std::unique_lock lock(m_vectorMutex);
+
+    for (size_t i = 0; i < m_events.size(); ++i) {
+        if (m_events[i] != event || delegate != m_delegates[i]) {
+            continue;
+        }
+        m_events.erase(m_events.begin() + i);
+        m_notifiables.erase(m_notifiables.begin() + i);
+        m_delegates.erase(m_delegates.begin() + i);
+        return;
+    }
+}
+
 void EventDispatcher::eventDestroyed(AbstractEvent *event) {
+    std::unique_lock lock(m_vectorMutex);
+
     for (size_t i = 0; i < m_events.size(); ++i) {
         if (m_events[i] != event) {
             continue;
@@ -56,6 +74,8 @@ void EventDispatcher::eventDestroyed(AbstractEvent *event) {
 }
 
 void EventDispatcher::notifiableDestroyed(NotifiableObject *notifiable) {
+    std::unique_lock lock(m_vectorMutex);
+
     for (size_t i = 0; i < m_notifiables.size(); ++i) {
         if (m_notifiables[i] != notifiable) {
             continue;

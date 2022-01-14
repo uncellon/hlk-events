@@ -26,6 +26,7 @@ int main(int argc, char *argv[]) {
     a->fireEvent();
     a->onTriggered.addEventHandler(b, &B::triggerHandler);
     a->fireEvent();
+    a->onTriggered.removeEventHandler(b, &B::triggerHandler);
     delete b;
     a->fireEvent();
 

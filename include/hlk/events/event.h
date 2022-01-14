@@ -104,6 +104,22 @@ public:
         removeEventHandler(dynamic_cast<TDelegate *>(delegate));
     }
 
+    // Remove event handler, safe
+    void removeEventHandler(TDelegate *delegate) {
+        std::unique_lock lock(*m_mutex);
+        int index = indexOfHandler(delegate);
+        if (index == -1) {
+            return;
+        }
+        delete (*m_handlers)[index];
+        if (m_called) {
+            (*m_handlers)[index] = nullptr;
+            ++m_deletedHandlersCounter;
+            return;
+        }
+        m_handlers->erase(m_handlers->begin() + index);
+    }
+
     /**
      * @brief Creates function delegate and attaches it to the Event
      * 
@@ -208,20 +224,6 @@ public:
         EventDispatcher::getInstance()->registerAttachment(this, context, m_handlers->back());
     }
 
-    // Remove event handler, safe
-    void removeEventHandler(TDelegate *delegate) {
-        std::unique_lock lock(*m_mutex);
-        int index = indexOfHandler(delegate);
-        if (index == -1) return;
-        delete (*m_handlers)[index];
-        if (m_called) {
-            (*m_handlers)[index] = nullptr;
-            ++m_deletedHandlersCounter;
-            return;
-        }
-        m_handlers->erase(m_handlers->begin() + index);
-    }
-
     // Remove function event handler
     void removeEventHandler(void (*func)(TArgs...)) {
         std::unique_lock lock(*m_mutex);
@@ -234,7 +236,7 @@ public:
     void removeEventHandler(TObject *object, void (TObject::*method)(TArgs...)) {
         std::unique_lock lock(*m_mutex);
         TDelegate delegate(object, method);
-        unsafeRemoveEventHandler(&delegate);  
+        unsafeRemoveEventHandler(&delegate);
     }
 
     // Remove lambda event handler
@@ -242,7 +244,6 @@ public:
     void removeEventHandler(TLambda && lambda) {
         std::unique_lock lock(*m_mutex);
         TDelegate delegate(std::move(lambda));
-        // delegate.bind(std::move(lambda));
         unsafeRemoveEventHandler(&delegate);
     }
 
@@ -348,6 +349,7 @@ protected:
         if (index == -1) {
             return;
         }
+        EventDispatcher::getInstance()->removeAttachment(this, (*m_handlers)[index]);
         delete (*m_handlers)[index];
         if (m_called) {
             (*m_handlers)[index] = nullptr;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(HlkEvents VERSION 2.1.0)
+project(HlkEvents VERSION 2.1.1)
 
 option(BUILD_EXAMPLES "Build examples" ON)
 option(BUILD_TESTS "Build tests" ON)
@@ -79,5 +79,6 @@ if(BUILD_TESTS)
     add_test(NAME MethodDelegateCall COMMAND MethodDelegateCallTest)
     add_test(NAME LambdaDelegateCall COMMAND LambdaDelegateCallTest)
     add_test(NAME RemovedMethodCall COMMAND RemovedMethodCallTest)
+    add_test(NAME RemovedMethodCallV2 COMMAND RemovedMethodCallV2Test)
     add_test(NAME RemovedLambdaCall COMMAND RemovedLambdaCallTest)
 endif()

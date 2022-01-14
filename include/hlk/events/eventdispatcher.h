@@ -41,6 +41,8 @@ public:
     static EventDispatcher *getInstance();
 
     void registerAttachment(AbstractEvent *event, NotifiableObject *notifiable, AbstractDelegate *delegate);
+    void removeAttachment(AbstractEvent *event, AbstractDelegate *delegate);
+
     void eventDestroyed(AbstractEvent *event);
     void notifiableDestroyed(NotifiableObject *notifiable);
 
@@ -52,6 +54,7 @@ protected:
     static std::mutex m_mutex;
     static EventDispatcher *m_instance;
 
+    std::mutex m_vectorMutex;
     std::vector<AbstractEvent *> m_events;
     std::vector<NotifiableObject *> m_notifiables;
     std::vector<AbstractDelegate *> m_delegates;

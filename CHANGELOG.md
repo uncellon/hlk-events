@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [2.1.1] - 2022-01-14
 
+### Added
+- Mutex that protect vector in EventDispatcher
+- Test with unsubscribing before event handler object destroyed
+
+### Fixed
+- Crash when object with event handler was unsubscribed before destroyed
 
 ## [2.1.0] - 2021-12-23
 
