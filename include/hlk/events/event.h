@@ -304,6 +304,9 @@ public:
             delete mutex;
 
             m_called = 0;
+
+            EventDispatcher::getInstance()->eventDestroyed(this);
+
             return;
         }
         m_called = 0;
