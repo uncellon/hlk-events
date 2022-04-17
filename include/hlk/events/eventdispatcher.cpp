@@ -21,7 +21,7 @@
  *****************************************************************************/
 
 #include "eventdispatcher.h"
-#include "notifiableobject.h"
+#include "object.h"
 #include "abstractevent.h"
 
 namespace Hlk {
@@ -37,7 +37,7 @@ EventDispatcher *EventDispatcher::getInstance() {
     return m_instance;
 }
 
-void EventDispatcher::registerAttachment(AbstractEvent *event, NotifiableObject *notifiable, AbstractDelegate *delegate) {
+void EventDispatcher::registerAttachment(AbstractEvent *event, Object *notifiable, AbstractDelegate *delegate) {
     std::unique_lock lock(m_vectorMutex);
     
     m_events.push_back(event);
@@ -73,7 +73,7 @@ void EventDispatcher::eventDestroyed(AbstractEvent *event) {
     }
 }
 
-void EventDispatcher::notifiableDestroyed(NotifiableObject *notifiable) {
+void EventDispatcher::notifiableDestroyed(Object *notifiable) {
     std::unique_lock lock(m_vectorMutex);
 
     for (size_t i = 0; i < m_notifiables.size(); ++i) {

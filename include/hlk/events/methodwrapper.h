@@ -92,7 +92,7 @@ public:
     }
 
     // Move assignment operator
-    MethodWrapper& operator=(MethodWrapper&& other) {
+    MethodWrapper& operator=(MethodWrapper &&other) {
         if (this == &other) {
             return *this;
         }
@@ -105,7 +105,7 @@ public:
 
 protected:
     /**************************************************************************
-     * Method (Protected)
+     * Methods (Protected)
      *************************************************************************/
 
     virtual bool isEquals(const AbstractWrapper<TReturn(TArgs...)> &other) const override {

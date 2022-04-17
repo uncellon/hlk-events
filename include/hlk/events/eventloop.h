@@ -20,53 +20,50 @@
  * 
  *****************************************************************************/
 
-#ifndef HLK_EVENT_DISPATCHER_H
-#define HLK_EVENT_DISPATCHER_H
+#ifndef HLK_EVENT_LOOP_H
+#define HLK_EVENT_LOOP_H
 
-#include <mutex>
-#include <vector>
+#include "delegate.h"
+#include "task.h"
+
+#include <queue>
+#include <thread>
 
 namespace Hlk {
 
-class AbstractEvent;
-class Object;
-class AbstractDelegate;
-
-class EventDispatcher {
+class EventLoop {
 public:
     /**************************************************************************
-     * Methods 
+     * Constructors / Destructors
      *************************************************************************/
 
-    static EventDispatcher *getInstance();
+    EventLoop();
+    ~EventLoop();
 
-    void registerAttachment(AbstractEvent *event, Object *notifiable, AbstractDelegate *delegate);
-    void removeAttachment(AbstractEvent *event, AbstractDelegate *delegate);
+    /**************************************************************************
+     * Methods
+     *************************************************************************/
 
-    void eventDestroyed(AbstractEvent *event);
-    void notifiableDestroyed(Object *notifiable);
+    void pushTask(AbstractTask* task);
 
 protected:
+    /**************************************************************************
+     * Methods (Protected)
+     *************************************************************************/
+
+    void loop();
+
     /**************************************************************************
      * Members
      *************************************************************************/
 
-    static std::mutex m_mutex;
-    static EventDispatcher *m_instance;
-
-    std::mutex m_vectorMutex;
-    std::vector<AbstractEvent *> m_events;
-    std::vector<Object *> m_notifiables;
-    std::vector<AbstractDelegate *> m_delegates;
-
-private:
-    /**************************************************************************
-     * Constructors / Destructors (Private)
-     *************************************************************************/
-
-    EventDispatcher() = default;    
+    bool m_running = false;
+    std::condition_variable m_cv;
+    std::mutex m_mutex;
+    std::queue<AbstractTask *> m_tasks;
+    std::thread *m_threadLoop = nullptr;
 };
 
-} // Hlk
+} // namespace Hlk
 
-#endif // HLK_EVENT_DISPATCHER_H
+#endif // HLK_EVENT_LOOP_H

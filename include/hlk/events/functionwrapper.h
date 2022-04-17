@@ -87,7 +87,7 @@ public:
     }
 
     // Move assignment operator
-    FunctionWrapper& operator=(FunctionWrapper&& other) {
+    FunctionWrapper& operator=(FunctionWrapper &&other) {
         if (this == &other) {
             return *this;
         }

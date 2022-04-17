@@ -20,24 +20,15 @@
  * 
  *****************************************************************************/
 
-#ifndef HLK_NOTIFIABLE_OBJECT_H
-#define HLK_NOTIFIABLE_OBJECT_H
-
-#include "eventdispatcher.h"
+#include "object.h"
 
 namespace Hlk {
 
-class NotifiableObject {
-public:
-    /**************************************************************************
-     * Constructors / Destructors
-     *************************************************************************/
+/******************************************************************************
+ * Constructors / Destructors
+ *****************************************************************************/
 
-    virtual ~NotifiableObject() {
-        // EventDispatcher::getInstance()->notifiableDestroyed(this);
-    }
-};
+Object::Object(EventLoop *eventLoop)
+: m_eventLoop(eventLoop) { }
 
 } // namespace Hlk
-
-#endif // HLK_NOTIFIABLE_OBJECT_H

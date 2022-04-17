@@ -20,53 +20,45 @@
  * 
  *****************************************************************************/
 
-#ifndef HLK_EVENT_DISPATCHER_H
-#define HLK_EVENT_DISPATCHER_H
+#ifndef HLK_OBJECT_H
+#define HLK_OBJECT_H
 
-#include <mutex>
-#include <vector>
+#include "eventloop.h"
+#include "eventdispatcher.h"
 
 namespace Hlk {
 
-class AbstractEvent;
-class Object;
-class AbstractDelegate;
-
-class EventDispatcher {
+class Object {
 public:
     /**************************************************************************
-     * Methods 
+     * Constructors / Destructors
      *************************************************************************/
 
-    static EventDispatcher *getInstance();
+    Object(EventLoop *eventLoop = nullptr);
+    virtual ~Object() {
+        EventDispatcher::getInstance()->notifiableDestroyed(this);
+    }
 
-    void registerAttachment(AbstractEvent *event, Object *notifiable, AbstractDelegate *delegate);
-    void removeAttachment(AbstractEvent *event, AbstractDelegate *delegate);
+    /**************************************************************************
+     * Accessors / Mutators
+     *************************************************************************/
 
-    void eventDestroyed(AbstractEvent *event);
-    void notifiableDestroyed(Object *notifiable);
+    EventLoop *eventLoop() const;
 
-protected:
+private:
     /**************************************************************************
      * Members
      *************************************************************************/
 
-    static std::mutex m_mutex;
-    static EventDispatcher *m_instance;
-
-    std::mutex m_vectorMutex;
-    std::vector<AbstractEvent *> m_events;
-    std::vector<Object *> m_notifiables;
-    std::vector<AbstractDelegate *> m_delegates;
-
-private:
-    /**************************************************************************
-     * Constructors / Destructors (Private)
-     *************************************************************************/
-
-    EventDispatcher() = default;    
+    EventLoop *m_eventLoop = nullptr;
 };
 
-} // Hlk
+/******************************************************************************
+ * Inline definition: Accessors / Mutators
+ *****************************************************************************/
 
-#endif // HLK_EVENT_DISPATCHER_H
+inline EventLoop *Object::eventLoop() const { return m_eventLoop; }
+
+} // namespace Hlk
+
+#endif // HLK_OBJECT_H

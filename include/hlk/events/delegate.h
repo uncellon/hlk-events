@@ -57,7 +57,7 @@ public:
 
     // Auto-bind lambda constructor
     template<class TLambda>
-    Delegate(TLambda && lambda) { 
+    Delegate(TLambda &&lambda) { 
         bind(std::move(lambda)); 
     }
 
@@ -99,7 +99,7 @@ public:
 
     // Bind lambda
     template<class TLambda>
-    void bind(TLambda&& lambda) {
+    void bind(TLambda &&lambda) {
         if (m_wrapper) {
             delete m_wrapper;
         }

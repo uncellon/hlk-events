@@ -46,7 +46,7 @@ public:
     }
 
     // Move constructor
-    LambdaWrapper(LambdaWrapper&& other) 
+    LambdaWrapper(LambdaWrapper &&other) 
     : m_lambda(other.m_lambda) {
         other.m_lambda = nullptr;
     }
@@ -63,7 +63,7 @@ public:
         return new TLWrapper(*this); 
     }
 
-    void bind(TLambda && lambda) { 
+    void bind(TLambda &&lambda) { 
         m_lambda = new TLambda(lambda);
     }
 
@@ -85,7 +85,7 @@ public:
     }
 
     // Move assignment operator
-    LambdaWrapper& operator=(LambdaWrapper&& other) {
+    LambdaWrapper& operator=(LambdaWrapper &&other) {
         if (this == &other) {
             return *this;
         }
