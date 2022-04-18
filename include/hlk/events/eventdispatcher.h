@@ -24,12 +24,13 @@
 #define HLK_EVENT_DISPATCHER_H
 
 #include <mutex>
+#include <shared_mutex>
 #include <vector>
 
 namespace Hlk {
 
 class AbstractEvent;
-class Object;
+class UTObject;
 class AbstractDelegate;
 
 class EventDispatcher {
@@ -40,24 +41,33 @@ public:
 
     static EventDispatcher *getInstance();
 
-    void registerAttachment(AbstractEvent *event, Object *notifiable, AbstractDelegate *delegate);
+    void registerAttachment(AbstractEvent *event, UTObject *notifiable, AbstractDelegate *delegate);
     void removeAttachment(AbstractEvent *event, AbstractDelegate *delegate);
 
     void eventDestroyed(AbstractEvent *event);
-    void notifiableDestroyed(Object *notifiable);
+    void clean(UTObject *notifiable);
+
+    bool attachmentValid(UTObject *event, AbstractDelegate *delegate);
+
+    void sharedLock() { m_mutex.lock_shared(); }
+    void sharedUnlock() { m_mutex.unlock_shared(); }
 
 protected:
+    struct DispatcherInfo {
+        AbstractEvent *event;
+        UTObject *object;
+        AbstractDelegate *delegate;
+    };
+
     /**************************************************************************
      * Members
      *************************************************************************/
 
-    static std::mutex m_mutex;
+    static std::shared_mutex m_mutex;
     static EventDispatcher *m_instance;
 
     std::mutex m_vectorMutex;
-    std::vector<AbstractEvent *> m_events;
-    std::vector<Object *> m_notifiables;
-    std::vector<AbstractDelegate *> m_delegates;
+    std::vector<DispatcherInfo> m_attachments;
 
 private:
     /**************************************************************************

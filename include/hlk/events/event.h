@@ -34,9 +34,16 @@
 namespace Hlk {
 
 template <class... TArgs>
-class Event : public AbstractEvent {
+class Event 
+: public AbstractEvent,
+  public UTObject {
     using TDelegate = Delegate<void(TArgs...)>;
 public:
+    struct EventHandlerInfo {
+        TDelegate *delegate;
+        EventLoop *eventLoop;
+    };
+
     /**************************************************************************
      * Constructors / Destructors
      *************************************************************************/
@@ -46,7 +53,7 @@ public:
         m_mutex = new std::mutex();
 
         // Create empty event handler collection
-        m_handlers = new std::vector<std::pair<EventLoop *, TDelegate *>>();
+        m_linkedHandlers = new std::vector<EventHandlerInfo>();
     }
 
     Event(const Event &other) { 
@@ -54,9 +61,9 @@ public:
         m_mutex = new std::mutex();
         
         // Copy handlers
-        m_handlers = new std::vector<std::pair<EventLoop *, TDelegate *>>;
+        m_linkedHandlers = new std::vector<EventHandlerInfo>();
         for (size_t i = 0; i < other.m_handlers->size(); ++i) {
-            m_handlers->push_back((*other.m_handlers)[i]);
+            m_linkedHandlers->emplace_back((*other.m_linkedHandlers)[i]);
         }
     }
 
@@ -67,8 +74,8 @@ public:
         m_mutex = new std::mutex();
 
         // Move handlers
-        m_handlers = other.m_handlers;
-        other.m_handlers = nullptr;
+        m_linkedHandlers = other.m_linkedHandlers;
+        other.m_linkedHandlers = nullptr;
     }
 
     ~Event() {
@@ -82,11 +89,11 @@ public:
         }
 
         // Delete event handlers
-        for (auto pair : *m_handlers) {
-            delete std::get<1>(pair);
+        for (auto eventHandlerInfo : *m_linkedHandlers) {
+            delete eventHandlerInfo.delegate;
         }
-        delete m_handlers;
-        m_handlers = nullptr;
+        delete m_linkedHandlers;
+        m_linkedHandlers = nullptr;
 
         m_mutex->unlock();
 
@@ -112,13 +119,13 @@ public:
         if (index == -1) {
             return;
         }
-        delete std::get<1>((*m_handlers)[index]);
+        delete (*m_linkedHandlers)[index].delegate;
         if (m_called) {
-            std::get<1>((*m_handlers)[index]) = nullptr;
+            (*m_linkedHandlers)[index].delegate = nullptr;
             ++m_deletedHandlersCounter;
             return;
         }
-        m_handlers->erase(m_handlers->begin() + index);
+        m_linkedHandlers->erase(m_linkedHandlers->begin() + index);
     }
 
     /**
@@ -139,7 +146,7 @@ public:
         }
 
         // Append delegate to the std::vector
-        m_handlers->push_back(delegate);
+        m_linkedHandlers->emplace_back( EventHandlerInfo { delegate, nullptr });
     }
 
     /**
@@ -170,13 +177,14 @@ public:
 
         EventLoop *eventLoop = nullptr;
 
-        auto o = dynamic_cast<Object *>(object);
+        auto o = dynamic_cast<UTObject *>(object);
         if (o) {
             eventLoop = o->eventLoop();
+            EventDispatcher::getInstance()->registerAttachment(this, o, delegate);
         }
 
         // Append delegate to the std::vector
-        m_handlers->emplace_back(std::pair<EventLoop *, TDelegate *>(eventLoop, delegate));
+        m_linkedHandlers->emplace_back( EventHandlerInfo { delegate, eventLoop });
     }
 
     /**
@@ -207,11 +215,11 @@ public:
         }
 
         // Append delegate to the std::vector
-        m_handlers->push_back(delegate);
+        m_linkedHandlers->emplace_back( EventHandlerInfo { delegate, nullptr } );
     }
 
     template<class TLambda>
-    void addEventHandler(Object *context, TLambda &&lambda) {
+    void addEventHandler(UTObject *context, TLambda &&lambda) {
         std::unique_lock lock(*m_mutex);
 
         // Create delegate for handle lambda
@@ -226,15 +234,15 @@ public:
 
         EventLoop *eventLoop = nullptr;
 
-        auto o = dynamic_cast<Object *>(context);
+        auto o = dynamic_cast<UTObject *>(context);
         if (o) {
             eventLoop = o->eventLoop();
-            return;
+            EventDispatcher::getInstance()->registerAttachment(this, o, delegate);
         }
 
         // Append delegate to the std::vector
-        m_handlers->emplace_back(std::pair<EventLoop *, TDelegate *>(eventLoop, delegate));
-        EventDispatcher::getInstance()->registerAttachment(this, context, delegate);
+        m_linkedHandlers->emplace_back( EventHandlerInfo { delegate, eventLoop } );
+        // EventDispatcher::getInstance()->registerAttachment(this, context, delegate);
     }
 
     // Remove function event handler
@@ -278,25 +286,30 @@ public:
         /* If the handler removes the event, pointers to the allocated objects 
         will be invalid. To avoid the error of freeing non-existent resources, 
         needed to copy the pointers to the local scope of the function. */
-        auto *handlers = m_handlers;
+        auto *handlers = m_linkedHandlers;
         std::mutex *mutex = m_mutex;
 
         for (size_t i = 0; i < handlers->size(); ++i) {
             // Check that the event handler hasn't been deleted
-            if (std::get<1>((*handlers)[i]) == nullptr) {
+            if ((*handlers)[i].delegate == nullptr) {
                 handlers->erase(handlers->begin() + i--);
                 continue;
             }
 
             lock.unlock();
-            auto task = new Task<void(TArgs&&...)>(std::get<1>((*handlers)[i]), params...);
-            (std::get<0>((*handlers)[i]))->pushTask(task);
+            if ((*handlers)[i].eventLoop) {
+                auto task = new Task<void(TArgs&&...)>((*handlers)[i].delegate, params...);
+                task->sender = this;
+                (*handlers)[i].eventLoop->pushTask(task);
+            } else {
+                (*handlers)[i].delegate->operator()(params...);
+            }
             lock.lock();
         }
 
         if (m_deletedHandlersCounter) {
             for (size_t i = 0; i < handlers->size(); ++i) {
-                if (std::get<1>((*handlers)[i]) == nullptr) {
+                if ((*handlers)[i].delegate == nullptr) {
                     handlers->erase(handlers->begin() + i--);
                     if (!--m_deletedHandlersCounter) {
                         break;
@@ -309,8 +322,8 @@ public:
         // Someone trying destroyed this event during execution
         if (m_destroyed) {
             // Delete event handlers
-            for (auto pair : *handlers) {
-                delete std::get<1>(pair);
+            for (auto eventHandlerInfo : *handlers) {
+                delete eventHandlerInfo.delegate;
             }
             delete handlers;
 
@@ -333,14 +346,14 @@ public:
         }
 
         // Delete all handlers before copying
-        for (size_t i = 0; i < m_handlers->size(); ++i) {
-            delete (*m_handlers)[i];
+        for (size_t i = 0; i < m_linkedHandlers->size(); ++i) {
+            delete (*m_linkedHandlers)[i];
         }
-        m_handlers->clear();
+        m_linkedHandlers->clear();
 
         // Copy handlers
-        for (size_t i = 0; i < other.m_handlers->size(); ++i) {
-            m_handlers->push_back( (*other.m_handlers)[i] );
+        for (size_t i = 0; i < other.m_linkedHandlers->size(); ++i) {
+            m_linkedHandlers->emplace_back( (*other.m_handlers)[i] );
         }
 
         return *this;
@@ -352,8 +365,8 @@ protected:
      *************************************************************************/
 
     inline int indexOfHandler(TDelegate *delegate) {
-        for (size_t i = 0; i < m_handlers->size(); ++i) {
-            if ( *(std::get<1>((*m_handlers)[i])) != *delegate ) {
+        for (size_t i = 0; i < m_linkedHandlers->size(); ++i) {
+            if ( *((*m_linkedHandlers)[i].delegate) != *delegate ) {
                 continue;
             }
             return i;
@@ -366,23 +379,21 @@ protected:
         if (index == -1) {
             return;
         }
-        // EventDispatcher::getInstance()->removeAttachment(this, (*m_handlers)[index]);
-        delete std::get<1>((*m_handlers)[index]);
+        EventDispatcher::getInstance()->removeAttachment(this, (*m_linkedHandlers)[index].delegate);
+        delete (*m_linkedHandlers)[index].delegate;
         if (m_called) {
-            std::get<1>((*m_handlers)[index]) = nullptr;
+            (*m_linkedHandlers)[index].delegate = nullptr;
             ++m_deletedHandlersCounter;
             return;
         }
-        m_handlers->erase(m_handlers->begin() + index);
+        m_linkedHandlers->erase(m_linkedHandlers->begin() + index);
     }
 
     /**************************************************************************
      * Members
      *************************************************************************/
 
-    // std::vector<TDelegate *> *m_handlers = nullptr;
-    // std::vector<EventLoop *> *m_eventLoops = nullptr;
-    std::vector<std::pair<EventLoop *, TDelegate *>> *m_handlers;
+    std::vector<EventHandlerInfo> *m_linkedHandlers;
     std::mutex *m_mutex = nullptr;
     unsigned int m_deletedHandlersCounter = 0;
     bool m_destroyed = false;

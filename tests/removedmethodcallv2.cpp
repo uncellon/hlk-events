@@ -1,5 +1,4 @@
 #include <hlk/events/event.h>
-#include <hlk/events/notifiableobject.h>
 #include <iostream>
 
 using namespace Hlk;
@@ -14,7 +13,7 @@ public:
     Event<> onTriggered;
 };
 
-class B : public NotifiableObject {
+class B : public UTObject {
 public:
     void triggerHandler() { ++counter; }
 };

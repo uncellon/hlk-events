@@ -29,6 +29,8 @@
 
 namespace Hlk {
 
+class UTObject;
+
 /******************************************************************************
  *
  * AbstractTask class
@@ -44,10 +46,18 @@ public:
     virtual ~AbstractTask() = default;
 
     /**************************************************************************
-     * Method
+     * Methods
      *************************************************************************/
 
     virtual void execute() = 0;
+
+    /**************************************************************************
+     * Accessors / Mutators
+     *************************************************************************/
+
+    virtual AbstractDelegate *delegate() const = 0;
+
+    UTObject *sender = nullptr;
 };
 
 
@@ -84,6 +94,12 @@ public:
 
     virtual inline void execute() override { (*m_delegate)(); }
 
+    /**************************************************************************
+     * Accessors / Mutators
+     *************************************************************************/
+
+    virtual AbstractDelegate *delegate() const override { return m_delegate; }
+
 protected:
     /**************************************************************************
      * Members
@@ -115,6 +131,12 @@ public:
      *************************************************************************/
 
     virtual void execute() override { (*m_delegate)(std::get<TArgs...>(m_args)); }
+
+    /**************************************************************************
+     * Accessors / Mutators
+     *************************************************************************/
+
+    virtual AbstractDelegate *delegate() const override { return m_delegate; }
 
 protected:
     /**************************************************************************
@@ -152,6 +174,7 @@ public:
      * Accessors / Mutators
      *************************************************************************/
 
+    virtual AbstractDelegate *delegate() const override { return m_delegate; }
     std::future<TReturn> future() { return m_promise.get_future(); }
 
 protected:
@@ -191,6 +214,7 @@ public:
      * Accessors / Mutators
      *************************************************************************/
 
+    virtual AbstractDelegate *delegate() const override { return m_delegate; }
     std::future<TReturn> future() { return m_promise.get_future(); }
 
 protected:

@@ -28,7 +28,11 @@ namespace Hlk {
  * Constructors / Destructors
  *****************************************************************************/
 
-Object::Object(EventLoop *eventLoop)
+UTObject::UTObject(EventLoop *eventLoop)
 : m_eventLoop(eventLoop) { }
+
+UTObject::~UTObject() {
+    EventDispatcher::getInstance()->clean(this);
+}
 
 } // namespace Hlk

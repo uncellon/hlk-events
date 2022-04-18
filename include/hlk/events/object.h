@@ -28,16 +28,14 @@
 
 namespace Hlk {
 
-class Object {
+class UTObject {
 public:
     /**************************************************************************
      * Constructors / Destructors
      *************************************************************************/
 
-    Object(EventLoop *eventLoop = nullptr);
-    virtual ~Object() {
-        EventDispatcher::getInstance()->notifiableDestroyed(this);
-    }
+    UTObject(EventLoop *eventLoop = nullptr);
+    virtual ~UTObject();
 
     /**************************************************************************
      * Accessors / Mutators
@@ -57,7 +55,7 @@ private:
  * Inline definition: Accessors / Mutators
  *****************************************************************************/
 
-inline EventLoop *Object::eventLoop() const { return m_eventLoop; }
+inline EventLoop *UTObject::eventLoop() const { return m_eventLoop; }
 
 } // namespace Hlk
 

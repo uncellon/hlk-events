@@ -21,6 +21,7 @@
  *****************************************************************************/
 
 #include "eventloop.h"
+#include "eventdispatcher.h"
 
 namespace Hlk {
 
@@ -55,6 +56,7 @@ void EventLoop::pushTask(AbstractTask* task) {
  *****************************************************************************/
 
 void EventLoop::loop() {
+    auto eventDispatcher = EventDispatcher::getInstance();
     std::mutex cvMutex;
     std::unique_lock lock(cvMutex, std::defer_lock);
 
@@ -69,8 +71,12 @@ void EventLoop::loop() {
         m_tasks.pop();
         m_mutex.unlock();
 
-        task->execute();
+        eventDispatcher->sharedLock();
+        if (eventDispatcher->attachmentValid(task->sender, task->delegate())) {
+            task->execute();
+        }
         delete task;
+        eventDispatcher->sharedUnlock();
     }
 }
 

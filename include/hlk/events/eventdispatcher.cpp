@@ -26,7 +26,7 @@
 
 namespace Hlk {
 
-std::mutex EventDispatcher::m_mutex;
+std::shared_mutex EventDispatcher::m_mutex;
 EventDispatcher *EventDispatcher::m_instance = nullptr;
 
 EventDispatcher *EventDispatcher::getInstance() {
@@ -37,24 +37,21 @@ EventDispatcher *EventDispatcher::getInstance() {
     return m_instance;
 }
 
-void EventDispatcher::registerAttachment(AbstractEvent *event, Object *notifiable, AbstractDelegate *delegate) {
+void EventDispatcher::registerAttachment(AbstractEvent *event, UTObject *notifiable, AbstractDelegate *delegate) {
     std::unique_lock lock(m_vectorMutex);
     
-    m_events.push_back(event);
-    m_notifiables.push_back(notifiable);
-    m_delegates.push_back(delegate);
+    m_attachments.emplace_back(DispatcherInfo { event, notifiable, delegate });
 }
 
 void EventDispatcher::removeAttachment(AbstractEvent *event, AbstractDelegate *delegate) {
     std::unique_lock lock(m_vectorMutex);
 
-    for (size_t i = 0; i < m_events.size(); ++i) {
-        if (m_events[i] != event || delegate != m_delegates[i]) {
+    for (size_t i = 0; i < m_attachments.size(); ++i) {
+        if (m_attachments[i].event != event 
+            || delegate != m_attachments[i].delegate) {
             continue;
         }
-        m_events.erase(m_events.begin() + i);
-        m_notifiables.erase(m_notifiables.begin() + i);
-        m_delegates.erase(m_delegates.begin() + i);
+        m_attachments.erase(m_attachments.begin() + i);
         return;
     }
 }
@@ -62,30 +59,38 @@ void EventDispatcher::removeAttachment(AbstractEvent *event, AbstractDelegate *d
 void EventDispatcher::eventDestroyed(AbstractEvent *event) {
     std::unique_lock lock(m_vectorMutex);
 
-    for (size_t i = 0; i < m_events.size(); ++i) {
-        if (m_events[i] != event) {
+    for (size_t i = 0; i < m_attachments.size(); ++i) {
+        if (m_attachments[i].event != event) {
             continue;
         }
-        m_events.erase(m_events.begin() + i);
-        m_notifiables.erase(m_notifiables.begin() + i);
-        m_delegates.erase(m_delegates.begin() + i);
+        m_attachments.erase(m_attachments.begin() + i);
         --i;
     }
 }
 
-void EventDispatcher::notifiableDestroyed(Object *notifiable) {
+void EventDispatcher::clean(UTObject *notifiable) {
     std::unique_lock lock(m_vectorMutex);
 
-    for (size_t i = 0; i < m_notifiables.size(); ++i) {
-        if (m_notifiables[i] != notifiable) {
+    for (size_t i = 0; i < m_attachments.size(); ++i) {
+        if (m_attachments[i].object != notifiable) {
             continue;
         }
-        m_events[i]->removeEventHandler(m_delegates[i]);
-        m_events.erase(m_events.begin() + i);
-        m_notifiables.erase(m_notifiables.begin() + i);
-        m_delegates.erase(m_delegates.begin() + i);
+        m_attachments[i].event->removeEventHandler(m_attachments[i].delegate);
+        m_attachments.erase(m_attachments.begin() + i);
         --i;
     }
+}
+
+bool EventDispatcher::attachmentValid(UTObject *event, AbstractDelegate *delegate) {
+    std::unique_lock lock(m_vectorMutex);
+
+    for (size_t i = 0; i < m_attachments.size(); ++i) {
+        if (m_attachments[i].event == dynamic_cast<AbstractEvent *>(event)
+            && m_attachments[i].delegate == delegate) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace Hlk
